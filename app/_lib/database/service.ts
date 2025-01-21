@@ -289,14 +289,22 @@ export async function getRecord(
     .select("*")
     .eq("purchase_order", purchase_order)
     .eq("item", item)
-    .single();
+    .limit(1)  // Asegura que solo se devuelva un registro, incluso si hay más de uno
+    .single(); // Esto seguirá funcionando como antes para asegurar que solo se devuelve uno
 
   if (error) {
+    // Asegurarse de manejar el error de manera adecuada
     return handleError(error);
+  }
+
+  if (!data) {
+    // Si no hay datos, manejar el caso de manera explícita
+    return null; 
   }
 
   return data;
 }
+
 
 export async function getRecordInvoice(
   base_bill_id: string,

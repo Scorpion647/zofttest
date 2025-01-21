@@ -17,7 +17,10 @@ export async function insertBills(
     .insert(billList)
     .select();
 
-  if (error) throw error;
+  if (error) {
+    console.error("Error inserting bills:", error);  // Log de error más detallado
+    throw new Error("No se pudo insertar la factura");
+  }
 
   return data;
 }
