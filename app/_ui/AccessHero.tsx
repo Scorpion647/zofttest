@@ -10,6 +10,7 @@ export default function AccessHero() {
                     <div className="w-full h-full flex absolute bottom-0 bg-white/10 backdrop-blur-lg"></div>
                     <div className="absolute">
                         <Box textAlign='center' alignContent='center' alignItems='center' alignSelf='center' className='bg-white px-10 py-20  rounded-3xl'>
+
                             <h1 className=' text-5xl font-bold'>¡Bienvenidos!</h1>
                             <Image alt="" className='mt-4' width='400' height='400' src="/undraw1.png"></Image>
                             <p className='font-medium text-lg text-gray-500'>Facilita tu facturación con nuestro software:</p>

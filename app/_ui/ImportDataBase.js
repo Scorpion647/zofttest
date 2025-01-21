@@ -22,7 +22,7 @@ import {
 import { FaCloudArrowUp } from "react-icons/fa6";
 import { getMaterial, getRecords, getMaterials, getSuppliers, getSupplier, getRecord } from '@/app/_lib/database/service';
 import { selectByPurchaseOrder } from '../_lib/database/base_bills';
-import { AddIcon, EditIcon } from '@chakra-ui/icons';
+import { AddIcon, CloseIcon, EditIcon } from '@chakra-ui/icons';
 import { insertBills, selectBills } from '../_lib/database/base_bills';
 import { insertMaterial, selectMaterials, selectSingleMaterial, updateMaterial } from '../_lib/database/materials';
 import { insertSupplier, selectSingleSupplier, selectSuppliers } from '../_lib/database/suppliers';
@@ -672,6 +672,9 @@ export const ImportDataBase = () => {
   const handleFileUpload = async (event) => {
     setFile(event.target.files[0] || null);
     let file = event.target.files[0];
+    if (!file) return
+
+    
     if (file) {
       try {
         const workbook = new ExcelJS.Workbook();
@@ -679,6 +682,27 @@ export const ImportDataBase = () => {
         setWorkbook(workbook);
 
         const worksheet = workbook.worksheets[0];
+
+        const firstRow = worksheet.getRow(1); // Obtiene la fila de encabezados
+
+        // Verifica que todos los encabezados esperados estén presentes
+        const expectedHeaders = headers[selectedTable]; // Encabezados esperados
+        const fileHeaders = firstRow.values.slice(1); // Valores de la primera fila (ignorando el índice 0)
+    
+        const headersValid = expectedHeaders.every(header => fileHeaders.includes(header));
+    
+        if (!headersValid) {
+          // Limpia el input
+          event.target.value = ''; 
+          toast({
+            title: "Error",
+            description: "Formato de archvio incorrecto, porfavor reviselo y vuelva a intentar",
+            status: "error",
+            duration: 3000,
+            isClosable: true,
+          });
+          return;
+        }
         const columnIndexes = {};
 
         worksheet.getRow(1).eachCell((cell, colNumber) => {
@@ -705,8 +729,13 @@ export const ImportDataBase = () => {
   };
 
   const [groupedBillsArray1, IsgroupedBillsArray1] = useState([])
-  const [showModal, setShowModal] = useState(false); // Estado para controlar el modal
-
+  const [showModal, setShowModal] = useState(false); 
+  const [Cancelar, setCancelar] = useState(false);
+  const cancelarRef = useRef(Cancelar);
+  
+  useEffect(() => {
+    cancelarRef.current = Cancelar; 
+  }, [Cancelar]);
   const validateAndInsertData = async () => {
     setIsProcessing(true);
     setProgress(0)
@@ -746,7 +775,23 @@ export const ImportDataBase = () => {
 
     for (const row of data) {
       const args = {};
-
+      if (cancelarRef.current) { 
+        const userConfirmed = window.confirm('¿Estás seguro que quieres cancelar el proceso?');
+        if (userConfirmed) {
+          setCancelar(false);  
+          toast({
+            title: "Proceso cancelado",
+            description: `Subida de datos cancelada con éxito`,
+            status: "success",
+            duration: 3000,
+            isClosable: true,
+          });
+          setIsProcessing(false);
+          return; 
+        } else {
+          setCancelar(false);  
+        }
+      }
       if (selectedTable === "Registros") {
 
         const [
@@ -922,7 +967,9 @@ if (existindatamaterial) {
         }
         const exist = await getSupplier("","",name)
         if(exist.name !== undefined){
-          //en el caso de repetirse
+          //si se reptite
+          completedTasks += 1;
+          continue
         }
 
         suppliersToInsert.push({ domain, name });
@@ -946,7 +993,7 @@ if (existindatamaterial) {
       };
       
    
-      const MAX_BATCH_SIZE = 15000;
+      const MAX_BATCH_SIZE = 10000;
       
   
       const recordsChunks = chunkArray(recordsToInsert, MAX_BATCH_SIZE);
@@ -971,7 +1018,7 @@ if (existindatamaterial) {
       };
       
    
-      const MAX_BATCH_SIZE = 15000;
+      const MAX_BATCH_SIZE = 10000;
       
 
       const recordsChunks = chunkArray(materialsToInsert, MAX_BATCH_SIZE);
@@ -1166,7 +1213,12 @@ const [Datafilter,setDatafilter] = useState()
   const SearchFilter = (e) => {
     setDatafilter(e.target.value)
   }
-  
+
+const vamosaver = () => {
+  console.log("Detectamos cambio")
+  setCancelar(true)
+}
+ 
   return (
     <>
       <Box >
@@ -1191,6 +1243,17 @@ const [Datafilter,setDatafilter] = useState()
               <Icon as={FaCloudArrowUp} w={5} h={5} color="black" />
             </Button>
           </Tooltip>
+          {isProcessing && (
+            <Tooltip label="Cancelar" fontSize="md">
+            <Button
+              colorScheme='teal'
+              backgroundColor="red"
+              onClick={vamosaver}
+            >
+              <CloseIcon color="white" w={5} h={5}/>
+            </Button>
+          </Tooltip>
+          )}
           <Tooltip label="Descargar plantilla" fontSize="md">
             <Button
 

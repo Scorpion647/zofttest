@@ -579,6 +579,29 @@ export default function Admin() {
                       
                     </>
                   )}
+                  {!isRegistro &&
+                  !isUsuario &&
+                  !isDominio &&
+                  !isDatos &&
+                  !isTracking && (
+                    <>
+                    
+                       
+                          <VStack justify="center" align="center" width="100%" height="100%">
+                            <Text className=" font-bold" textColor="gray.500" fontSize="200%">ZOFT</Text>
+                            <Image
+                            src="/iconogris.png" 
+                            alt="IconGray"
+                            w="150px"
+                            h="150px"
+                            />
+                            <Text className=" font-bold" textColor="gray.500" fontSize="80%">El gestor de facturación que necesitas</Text>
+                          </VStack>
+                       
+                      
+                      
+                    </>
+                  )}
                 
                   
               </VStack>

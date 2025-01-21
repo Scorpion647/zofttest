@@ -6,10 +6,7 @@ async function fetchMaterialData(materialCode) {
     return await getMaterial(materialCode);
 }
 
-function removeTrailingZeros(num) {
-    let str = num.toString();
-    return str.includes('.00') ? str.replace('.00', '') : str;
-}
+
 
 async function fetchRecordAndMaterialData(recordId) {
     const material = await fetchMaterialData(recordId);
@@ -18,16 +15,17 @@ async function fetchRecordAndMaterialData(recordId) {
 
 export async function handleExport(visibleData) {
     let order = "";
+    let id = "";
     try {
         const dataPromises = visibleData.map(async (row) => {
             const recordId = row[0];
-            if(order == ""){
+            if (order == "") {
                 order = row[0]
             }
             const fetchedData = await fetchRecordAndMaterialData(recordId);
             const record = await getRecord(order, row[1]);
             const info = await getRecordInfo(record.base_bill_id);
-
+            id = info.invoice_id
             if (!fetchedData) return null;
 
             let conversion = 0;
@@ -38,11 +36,11 @@ export async function handleExport(visibleData) {
             }
 
             let PTPRECIO = (row[13]).replace(/[$,]/g, '');
-            let PTTASA_CAMBIO = row[11]; // Asegúrate de que este valor esté disponible
+            const PTTASA_CAMBIO = row[11];
 
             // Asegúrate de que PTPRECIO se calcule correctamente
-            PTPRECIO = (info.billed_currency === "USD" || info.billed_currency === "EUR") 
-                ? parseFloat(PTPRECIO) 
+            PTPRECIO = (info.billed_currency === "USD" || info.billed_currency === "EUR")
+                ? parseFloat(PTPRECIO)
                 : parseFloat((PTPRECIO / PTTASA_CAMBIO).toFixed(9)); // Cambiar a PTTASA_CAMBIO
 
             return {
@@ -100,16 +98,17 @@ export async function handleExport(visibleData) {
                 'NMBULTOS': 0
             });
 
+
             Object.keys(itemMap).forEach((coditem) => {
                 const items = itemMap[coditem];
 
                 const summedItem = items.reduce((acc, item) => {
-                    acc['NMCANTIDAD'] += parseFloat(item['NMCANTIDAD']) || 0;
+                    acc['NMCANTIDAD'] += parseFloat(item['NMCANTIDAD']);
                     return acc;
                 }, {
                     'CODSUBP': codsubp,
                     'CODEMBALAJE': "PK",
-                    ...summedBySubpartida, 
+                    ...summedBySubpartida,
                     'CODBANDERA': 169,
                     'CODPAIS_ORIGEN': 169,
                     'PTTASA_CAMBIO': items[0]['PTTASA_CAMBIO'], // Obtener el valor de PTTASA_CAMBIO
@@ -124,6 +123,16 @@ export async function handleExport(visibleData) {
                     'NMCANTIDAD': 0,
                     'PTPRECIO': items[0]['PTPRECIO'], // Obtener el valor de PTPRECIO
                     'NMCONVERSION': 0
+                });
+
+
+                const cantidadPorCodItem = {};
+                items.forEach(item => {
+                    const codItem = item['CODITEM'];
+                    if (!cantidadPorCodItem[codItem]) {
+                        cantidadPorCodItem[codItem] = 0;
+                    }
+                    cantidadPorCodItem[codItem] += parseFloat(item['NMCANTIDAD']) || 0;
                 });
 
                 const uniqueItems = items.filter((item, index, self) =>
@@ -156,7 +165,7 @@ export async function handleExport(visibleData) {
                             'SEGUROS': '',
                             'OTROS_GASTOS': '',
                             'CODITEM': item['CODITEM'],
-                            'NMCANTIDAD': item['NMCANTIDAD'],
+                            'NMCANTIDAD': cantidadPorCodItem[item['CODITEM']],
                             'PTPRECIO': item['PTPRECIO'],
                             'NMCONVERSION': item['NMCONVERSION']
                         });
@@ -167,7 +176,7 @@ export async function handleExport(visibleData) {
 
         const csv = Papa.unparse(groupedData, { delimiter: ';' });
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        saveAs(blob, 'records.csv');
+        saveAs(blob, (id+'.csv'));
     } catch (err) {
         console.error('Error al generar el archivo CSV:', err);
     }

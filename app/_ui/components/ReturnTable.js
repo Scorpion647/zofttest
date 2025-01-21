@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { HotTable } from '@handsontable/react';
 import 'handsontable/dist/handsontable.full.css';
 import Handsontable from 'handsontable';
@@ -12,6 +12,7 @@ import { FaSave } from "react-icons/fa";
 import { EditIcon } from '@chakra-ui/icons';
 import { Associate_invoice } from '../Associate_invoice';
 import { useSharedState } from '../useSharedState';
+import debounce from "lodash/debounce"; 
 
 function formatMoney(amount) {
   return amount.toLocaleString('en-US', {
@@ -32,121 +33,6 @@ function formatMoney(amount) {
 
 
 
-function InfoModal({ isOpen, onClose, cellInfo, onSave }) {
-  const [selectedStatus, setSelectedStatus] = useState("national");
-  const [tipo, setTipo] = useState(true);
-  const [creatingMaterial, setCreatingMaterial] = useState(false); 
-  const [code, setCode] = useState(cellInfo?.code || '');
-  const [subp, setSubp] = useState(cellInfo?.subp || '');
-  const [unit, setUnit] = useState(cellInfo?.unit || '');
-  
-
-  useEffect(() => {
-    const verificar = async () => {
-      if (cellInfo) {
-        try {
-          const materialNational = await getMaterial(`${cellInfo.code}-N`);
-          if (materialNational?.material_code) {
-            if (!materialNational.type) {
-              await updateMaterial({data: { type: "national" }, target: materialNational.material_code});
-            }
-            setTipo(true);
-          } else {
-            setTipo(false);
-          }
-        } catch (error) {
-          console.error("Error verificando el material:", error);
-          setTipo(false);
-        }
-      }
-    };
-
-    verificar();
-  }, [cellInfo]);
-
-  const handleSave = async () => {
-    if (selectedStatus === "foreign" && !tipo) {
-
-      const insert = await insertMaterial({ material_code: `${cellInfo.code}-N`, subheading: cellInfo.subp, measurement_unit: unit, type: "national" })
-    }
-    console.log(cellInfo.code)
-    console.log(selectedStatus)
-    console.log(unit)
-    const update = {
-      data: {
-        type: selectedStatus,
-        ...((cellInfo.unit === "null") ? { measurement_unit: unit } : {}) 
-      },
-      target:cellInfo.code
-    }
-    console.log(update)
-    const hola = await updateMaterial(update)
-    console.log("hola", hola)
-
-    onClose(); 
-  };
-
-  return (
-    <Modal isOpen={isOpen} onClose={onClose} motionPreset="none">
-      <ModalOverlay />
-      <ModalContent>
-        <ModalHeader>Actualizar Material</ModalHeader>
-        <ModalCloseButton />
-        <ModalBody>
-          {cellInfo && (
-            <>
-
-
-
-              <p><strong>Codigo:</strong> {cellInfo.code}</p>
-              <p><strong>Subpartida:</strong> {cellInfo.subp}</p>
-              {(cellInfo.unit !== "null") && (
-              <p><strong>Unidad:</strong> {cellInfo.unit}</p>
-              )}
-              <FormControl mb={4}>
-              {(cellInfo.unit === "null") && (
-                <>
-                <HStack spacing={0}>
-                <FormLabel><strong>Unidad:</strong></FormLabel>
-                <Input width="50%" height="30px" border="1px" backgroundColor='white' onChange={(e) => setUnit(e.target.value)}></Input>
-                </HStack>
-                </>
-              )}
-                <HStack spacing={0}>
-                <FormLabel><strong>Tipo:</strong></FormLabel>
-                <Select
-                  width="50%"
-                  border="1px"
-                  height="30px"
-                  value={selectedStatus}
-                  onChange={(e) => setSelectedStatus(e.target.value)}
-                  backgroundColor='white'
-                >
-                  <option value="national">NACIONAL</option>
-                  <option value="foreign">EXTRANJERO</option>
-                  <option value="nationalized">NACIONALIZADO</option>
-                  <option value="other">OTRO</option>
-                </Select>
-                </HStack>
-              </FormControl>
-
-              
-            </>
-          )}
-
-          <HStack align="center" justify="center" spacing={4} mt={4}>
-            <Button colorScheme="teal" bgColor="red" onClick={onClose}>
-              Cerrar
-            </Button>
-            <Button colorScheme="teal" bgColor="#F1D803" textColor="black" onClick={handleSave}>
-              Guardar
-            </Button>
-          </HStack>
-        </ModalBody>
-      </ModalContent>
-    </Modal>
-  );
-}
 
 
 
@@ -193,6 +79,135 @@ const ReturnTable = ({ suppliers, volver }) => {
   useEffect(() => {
     fetchData()
   },[])
+
+
+
+
+
+
+
+
+
+
+
+
+  function InfoModal({ isOpen, onClose, cellInfo, onSave }) {
+    const [selectedStatus, setSelectedStatus] = useState("national");
+    const [tipo, setTipo] = useState(true);
+    const [creatingMaterial, setCreatingMaterial] = useState(false); 
+    const [code, setCode] = useState(cellInfo?.code || '');
+    const [subp, setSubp] = useState(cellInfo?.subp || '');
+    const [unit, setUnit] = useState(cellInfo?.unit || '');
+    
+  
+    useEffect(() => {
+      const verificar = async () => {
+        if (cellInfo) {
+          try {
+            const materialNational = await getMaterial(`${cellInfo.code}-N`);
+            if (materialNational?.material_code) {
+              if (!materialNational.type) {
+                await updateMaterial({data: { type: "national" }, target: materialNational.material_code});
+              }
+              setTipo(true);
+            } else {
+              setTipo(false);
+            }
+          } catch (error) {
+            console.error("Error verificando el material:", error);
+            setTipo(false);
+          }
+        }
+      };
+  
+      verificar();
+    }, [cellInfo]);
+  
+    const handleSave = async () => {
+      if (selectedStatus === "foreign" && !tipo) {
+  
+        const insert = await insertMaterial({ material_code: `${cellInfo.code}-N`, subheading: cellInfo.subp, measurement_unit: unit, type: "national" })
+      }
+      console.log(cellInfo.code)
+      console.log(selectedStatus)
+      console.log(unit)
+      const update = {
+        data: {
+          type: selectedStatus,
+          ...((cellInfo.unit === "null") ? { measurement_unit: unit } : {}) 
+        },
+        target:cellInfo.code
+      }
+      console.log(update)
+      const hola = await updateMaterial(update)
+
+      onClose(); 
+    };
+  
+    return (
+      <Modal isOpen={isOpen} onClose={onClose} motionPreset="none">
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Actualizar Material</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            {cellInfo && (
+              <>
+  
+  
+  
+                <p><strong>Codigo:</strong> {cellInfo.code}</p>
+                <p><strong>Subpartida:</strong> {cellInfo.subp}</p>
+                {(cellInfo.unit !== "null") && (
+                <p><strong>Unidad:</strong> {cellInfo.unit}</p>
+                )}
+                <FormControl mb={4}>
+                {(cellInfo.unit === "null") && (
+                  <>
+                  <HStack spacing={0}>
+                  <FormLabel><strong>Unidad:</strong></FormLabel>
+                  <Input width="50%" height="30px" border="1px" backgroundColor='white' onChange={(e) => setUnit(e.target.value)}></Input>
+                  </HStack>
+                  </>
+                )}
+                  <HStack spacing={0}>
+                  <FormLabel><strong>Tipo:</strong></FormLabel>
+                  <Select
+                    width="50%"
+                    border="1px"
+                    height="30px"
+                    value={selectedStatus}
+                    onChange={(e) => setSelectedStatus(e.target.value)}
+                    backgroundColor='white'
+                  >
+                    <option value="national">NACIONAL</option>
+                    <option value="foreign">EXTRANJERO</option>
+                    <option value="nationalized">NACIONALIZADO</option>
+                    <option value="other">OTRO</option>
+                  </Select>
+                  </HStack>
+                </FormControl>
+  
+                
+              </>
+            )}
+  
+            <HStack align="center" justify="center" spacing={4} mt={4}>
+              <Button colorScheme="teal" bgColor="red" onClick={onClose}>
+                Cerrar
+              </Button>
+              <Button colorScheme="teal" bgColor="#F1D803" textColor="black" onClick={handleSave}>
+                Guardar
+              </Button>
+            </HStack>
+          </ModalBody>
+        </ModalContent>
+      </Modal>
+    );
+  }
+
+
+
 
 
 
@@ -460,7 +475,35 @@ const data4 = Typematerial(type);
 
 
 
+  const validateTable = () => {
+    if(!hotTableRef.current) return
+    const hot = hotTableRef.current.hotInstance;
+    if (!hot || hot.isDestroyed) return;
+    const rows = hot.getData(); // Obtén todas las filas de la tabla
+    const emptyColumnIndexes = [9, 10]; // Columnas que deseas comprobar si están vacías (ejemplo: columna 0 y 2)
+    const wordColumnIndex = 15; // Columna específica para verificar una palabra (ejemplo: columna 3)
 
+  
+    // Recorremos las filas
+    for (let row = 0; row < rows.length; row++) {
+      // Recorremos las columnas que queremos verificar si están vacías
+      for (let col of emptyColumnIndexes) {
+        if (!rows[row][col]) {
+          // Si la celda está vacía, devuelve false
+          return false;
+        }
+      }
+  
+      // Verificar si en la columna específica aparece la palabra
+      if (rows[row][wordColumnIndex] === "INVALIDO" || rows[row][wordColumnIndex] === "EXTRANJERO" || rows[row][wordColumnIndex] === "OTRO") {
+        // Si la palabra específica aparece, devuelve false
+        return false;
+      }
+    }
+  
+    // Si ninguna condición se cumple, devuelve true
+    return true;
+  };
 
 
 
@@ -610,23 +653,31 @@ const { isOpen: isOpen5, onOpen: onOpen5, onClose: onClose5 } = useDisclosure();
     console.log('Texto ingresado:', textValue); // Acción cuando se presiona "Aceptar"
     onClose5(); // Cierra el modal
   };
-
+  const isTableValid = validateTable();
   
- useEffect(() => {
-  const confirm = async () => {
-    const invoice = await selectSingleInvoice(suppliers)
-    setcontv(contv+1)
-    if(status === "rejected" && !invoice.feedback && contv > 0){
-      onOpen5()
-    }else{
-      setTextValue("")
-    }
-  }
-  confirm()
- },[status])
+  useEffect(() => {
+    const confirm = async () => {
+      const invoice = await selectSingleInvoice(suppliers);
+      setcontv(contv + 1); // Aumentar el contador solo si es necesario
+  
+      // Si el estado es "rejected" y no tiene feedback, abrir el modal.
+      // Evitar cambiar el texto innecesariamente con setTextValue("") cuando el modal ya tiene valor.
+      if (status === "rejected" && !invoice.feedback && contv > 0 && !isOpen5) {
+        setTextValue(""); // Limpiar solo cuando es necesario
+        onOpen5(); // Abrir el modal
+      } else {
+        setTextValue(invoice.feedback || ""); // Mantener el texto si hay un feedback
+      }
+    };
+    confirm();
+  }, [status]);
+  
 
 
-
+const handleTextChange = useCallback((e) => {
+  let frase = e.target.value
+  setTextValue(e.target.value);
+}, []); // Solo se define una vez
  
 
   return (
@@ -653,10 +704,12 @@ const { isOpen: isOpen5, onOpen: onOpen5, onClose: onClose5 } = useDisclosure();
                       mb={0}
                     >
                       <Box position="absolute" right={2}>
-  
-                        <Button isDisabled={!isapproved} onClick={() => handleExportar()} bgColor="#F1D803" textColor="black"  >
+                        <Tooltip label={isTableValid ? "": "Hay datos invalidos"}>
+                        <Button isDisabled={!isapproved || !isTableValid} onClick={() => handleExportar()} bgColor="#F1D803" textColor="black"  >
                           Export
                         </Button>
+                        </Tooltip>
+                        
   
                       </Box>
                       
@@ -719,30 +772,31 @@ const { isOpen: isOpen5, onOpen: onOpen5, onClose: onClose5 } = useDisclosure();
                         </HStack>
                       </HStack>
                      
-        <Modal isOpen={isOpen5} onClose={onClose5} isCentered size="xl"> {/* Modal centrado y grande */}
-        <ModalOverlay /> {/* Fondo semi-transparente */}
-        <ModalContent>
-          <ModalHeader>Razon de Rechazo</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody>
-            <Textarea
-              value={textValue}
-              onChange={(e) => setTextValue(e.target.value)}
-              placeholder="Escribe aquí tu texto"
-              bgColor="gray.200"
-              size="lg"
-              height="200px" /* Altura del textarea */
-            />
-          </ModalBody>
+                      <Modal isOpen={isOpen5} onClose={onClose5} isCentered size="xl">
+  <ModalOverlay />
+  <ModalContent>
+    <ModalHeader>Razon de Rechazo</ModalHeader>
+    <ModalCloseButton onClick={() => setStatus("pending")}/>
+    <ModalBody>
+      <Textarea
+        value={textValue}
+        onChange={handleTextChange}
+        placeholder="Escribe aquí tu texto"
+        bgColor="gray.200"
+        size="lg"
+        height="200px"
+      />
+    </ModalBody>
 
-          <ModalFooter>
-            <Button bgColor="#F1D803" textColor="black" mr={3} onClick={handleAccept}>
-              Aceptar
-            </Button>
-            <Button bgColor="red" textColor="white" onClick={onClose5}>Cancelar</Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+    <ModalFooter>
+      <Button bgColor="#F1D803" textColor="black" mr={3} onClick={handleAccept}>
+        Aceptar
+      </Button>
+      <Button bgColor="red" textColor="white" onClick={() => { onClose5(); setStatus("pending"); }}>Cancelar</Button>
+    </ModalFooter>
+  </ModalContent>
+</Modal>
+
       
                                   
                     </VStack>

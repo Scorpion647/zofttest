@@ -10,11 +10,13 @@ import { IoMenu } from "react-icons/io5";
 import { IoEllipsisVerticalSharp } from "react-icons/io5";
 import { getSuppliers } from '@/app/_lib/database/service';
 import { Gettempleados } from '@/app/_ui/Gettempleados'
+import { selectSuppliers } from "../_lib/database/suppliers";
 
 
 export const CreatelargeDomain = () => {
     const [suppliers, setSuppliers] = useState([]);
     const [search, setSearch] = useState("");
+    const [isInput, setisInput] = useState("");
     const [selectedSupplier, setSelectedSupplier] = useState(null);
     const [hola, setHola] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
@@ -23,22 +25,32 @@ export const CreatelargeDomain = () => {
   const [iMediumScreen] = useMediaQuery("(min-width: 768px) and (max-width: 1024px)");
   const [iLargeScreen] = useMediaQuery("(min-width: 1024px)");
 
-    useEffect(() => {
-        const fetchSuppliers = async () => {
-            const data = await getSuppliers(currentPage, 8, search);
-            if (data) {
-                setSuppliers(data);
+  const isFetchingRef = useRef(false);
 
-                const nextPageData = await getSuppliers(currentPage + 1, 8, search);
-                setHasNextPage(nextPageData.length > 0);
-            } else {
-                setSuppliers([]);
-                setHasNextPage(false);
-            }
-        };
+  useEffect(() => {
+      const fetchSuppliers = async () => {
+          if (isFetchingRef.current) return; // Evita que se inicie un nuevo fetch si ya está en curso
+          isFetchingRef.current = true; // Marca el proceso como en curso
+          try {
+              const data = await selectSuppliers({page: currentPage, limit: 8, equals: {}, orderBy: {column: "name", options: {ascending: true}}});
+              if (data) {
+                  setSuppliers(data);
 
-        fetchSuppliers();
-    }, [search, currentPage]);
+                  const nextPageData = await selectSuppliers({page: currentPage + 1, limit: 8, equals: {}, orderBy: {column: "name", options: {ascending: true}}});
+                  setHasNextPage(nextPageData.length > 0);
+              } else {
+                  setSuppliers([]);
+                  setHasNextPage(false);
+              }
+          } catch (error) {
+              console.error("Error fetching suppliers:", error);
+          } finally {
+              isFetchingRef.current = false; // Marca el proceso como terminado
+          }
+      };
+
+      fetchSuppliers();
+  }, [search, currentPage]);
 
     const handleSupplierClick = (supplier) => {
         setSelectedSupplier(supplier);
@@ -52,14 +64,18 @@ export const CreatelargeDomain = () => {
     };
 
     const handlePreviousPage = () => {
-        if (currentPage > 1) {
-            setCurrentPage(prevPage => prevPage - 1);
+        if(!isFetchingRef.current){
+            if (currentPage > 1) {
+                setCurrentPage(prevPage => prevPage - 1);
+            }
         }
     };
 
     const handleNextPage = () => {
-        if (hasNextPage) {
-            setCurrentPage(prevPage => prevPage + 1);
+        if(!isFetchingRef.current){
+            if (hasNextPage) {
+                setCurrentPage(prevPage => prevPage + 1);
+            }
         }
     };
 
@@ -67,7 +83,7 @@ export const CreatelargeDomain = () => {
         setHola(true)
     }
     if (!hola && selectedSupplier) {
-        return <Gettempleados supplier={selectedSupplier} regresar={ChangeEmployeed}/>;
+        return <Gettempleados supplier={selectedSupplier} regresar={ChangeEmployeed}/>
     }
 
     const handleIconClick = (supplierId) => {
@@ -87,8 +103,8 @@ export const CreatelargeDomain = () => {
                 <>
                     <Flex w="100%" className="mt-3 mb-3" justify="space-between" align="center">
                         <HStack>
-                            <Input width='80%' border='1px' backgroundColor='white' placeholder="Dominio" />
-                            <Button colorScheme='teal' backgroundColor='#F1D803'>
+                            <Input width='80%' value={isInput} border='1px' backgroundColor='white' onChange={(e) => setisInput(e.target.value)} placeholder="Proveedor" />
+                            <Button colorScheme='teal' onClick={() => setSearch(isInput)} backgroundColor='#F1D803'>
                                 <SearchIcon w={5} h={5} color='black' />
                             </Button>
                         </HStack>

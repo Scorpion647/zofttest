@@ -5,6 +5,7 @@ import FormSubmit from "./formSubmit";
 import { CustomDataError } from "@/app/_lib/definitions";
 import { useFormContext } from "@/app/_lib/utils/formContext";
 import {Text} from "@chakra-ui/react";
+import ResetPasswordModal from "./resetpassword";
 
 export type AccessFormProps = {
     type: FormType;
@@ -27,6 +28,13 @@ export default function AccessForm(props: AccessFormProps) {
     const [userNameError, setUserNameError] = useState<string | undefined>(undefined);
     const [error, setError] = useState<string | undefined>(undefined);
     const [ResetPassword, setResetPassword] = useState(false);
+    const [showResetModal, setShowResetModal] = useState(false);
+
+    // Función para abrir el modal
+    const openResetPasswordModal = () => setShowResetModal(true);
+  
+    // Función para cerrar el modal (se pasa como prop al modal)
+    const closeResetPasswordModal = () => setShowResetModal(false);
 
     const resetErrors = () => {
         setEmailError(undefined);
@@ -67,7 +75,10 @@ export default function AccessForm(props: AccessFormProps) {
                     <>
                         <FormInput name="email" label={emailError} placeholder="Email" type="email" className={emailError ? "input-error" : ""} labelStyle="text-red-500" />
                         <FormInput name="password" label={passwordError ?? ChangePasswordError} placeholder="Password" type="password" className={passwordError ? "input-error" : ""} labelStyle="text-red-500" />
-                        <Text fontSize='sm' textAlign="center" textColor="blue" cursor="pointer" onClick={() => setResetPassword(true)}>¿Has olvidado tu contraseña?</Text>
+                        <Text fontSize='sm' textAlign="center" textColor="blue" cursor="pointer" onClick={openResetPasswordModal}>¿Has olvidado tu contraseña?</Text>
+                        {showResetModal && <ResetPasswordModal onClose={closeResetPasswordModal} validateEmail={function (email: string): Promise<boolean> {
+                            throw new Error("Function not implemented.");
+                        } } />}
                     </>
                 )}
                 {props.type === FormType.SignUp && (

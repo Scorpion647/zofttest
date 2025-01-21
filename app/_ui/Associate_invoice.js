@@ -65,12 +65,18 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
 
   const { isOpen, onOpen, onClose } = useDisclosure();
 
-  const pruebas = async () => {
 
+ 
+
+
+  const pruebas = async () => {
     let tfactura = 0;
     let Copia = [];
-    const hot = hotTableRef.current.hotInstance;
     try {
+      const hot = hotTableRef.current.hotInstance;
+    if (!hot || hot.isDestroyed) return;
+      setIsLoading2(true)
+      
       const invoice = await selectSingleInvoice(invoi);
       
       // Manejo de estados inicial
@@ -126,7 +132,8 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
           }
         }
       });
-  
+
+
       await Promise.all(billPromises);
 
     // Actualización final del estado
@@ -161,40 +168,55 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
     });
 
     // Actualizar la tabla de Handsontable en batch
-    if (result.length > 0) {
-        console.log("Aplicando cambios de una vez en la tabla...");
-        
-        hot.batch(() => {
-            hot.setDataAtCell(result);
-        });
-        
-        // Esperar a que el batch termine
-        await new Promise(resolve => {
-            hot.addHookOnce('afterChange', () => {
-                console.log("Cambios aplicados en la tabla.");
-                resolve();
-            });
-        });
-        
-        // Recargar la tabla para asegurar que todos los datos están bien sincronizados
-        hot.loadData(hot.getData());
-      
+    if (result.length > 0 && hot && !hot.isDestroyed) {
+      await new Promise((resolve) => {
+          hot.batch(() => {
+              hot.setDataAtCell(result);
+          });
 
-        console.log("Tabla recargada.");
-    } else {
-        console.log("No hay cambios para aplicar.");
-    }
+          // Usa el hook `afterChange` para confirmar los cambios
+          hot.addHookOnce('afterChange', (changes, source) => {
+              if (source !== 'loadData') {
+                  console.log("Datos actualizados en la tabla.");
+                  resolve();
+              }
+          });
+      });
+
+      // Usa el hook `afterLoadData` para confirmar cuando los datos han sido recargados
+      await new Promise((resolve) => {
+          hot.addHookOnce('afterLoadData', () => {
+              console.log("Datos cargados en la tabla.");
+              resolve();
+          });
+      });
+
+
+
+      setTimeout(() => {
+        hot.loadData(hot.getSourceData());  // Recarga usando la fuente original de datos
+        console.log("Datos recargados forzadamente.");
+      }, 200);
+
+      
+  } else {
+      console.log("No hay cambios para aplicar o la instancia de Handsontable no está disponible.");
+  }
     } catch (error) {
       console.error('Error in pruebas function:', error);
     } finally {
-
-     
+      const hot = hotTableRef.current.hotInstance;
+    if (!hot || hot.isDestroyed ) return;
+      setTimeout(() => {
+        setIsLoading2(false)
+      }, 7000);
 
     }
   };
   
 
-
+  
+  
 
 
 
@@ -273,6 +295,22 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
 
 
 
+  const updateAutoSequence = async (row, subheading) => {
+    const hot = hotTableRef.current.hotInstance;
+    const data = hot.getData();
+  
+    if (subheading) {
+      // Agregar al conjunto solo si el subheading es válido
+      setRowsWithAutoSequence((prevSet) => new Set(prevSet).add(row));
+    } else {
+      // Eliminar del conjunto si el subheading es inválido
+      setRowsWithAutoSequence((prevSet) => {
+        const newSet = new Set(prevSet);
+        newSet.delete(row);
+        return newSet;
+      });
+    }
+  };
 
 
 
@@ -282,10 +320,21 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
 
 
 
+  let globalCounter = {};
 
+  // Función para actualizar el contador y almacenar las filas
+  function updateGlobalCounter(rowIndex, value) {
+    // Si el valor es '**********', se considera que la fila tiene secuencia automática
+    if (value === '**********') {
+      globalCounter[rowIndex] = true;  // Marca la fila como secuencia automática
+    } else {
+      delete globalCounter[rowIndex];  // Elimina la fila del contador si no es secuencia automática
+    }
+  }
 
-
-
+  function getCounter(row) {
+    return globalCounter[row];
+  }
 
 
 
@@ -537,6 +586,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
 
 
   const clearRowsWithValuesInColumn0 = debounce(async () => {
+    if(!hotTableRef.current) return
     const hot = hotTableRef.current.hotInstance;
     const data = hot.getData();
 
@@ -878,13 +928,20 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
     const pos = data[coords.row]?.[0]?.toString().trim();
     const quanti = parseInt(data[coords.row]?.[2]?.toString().trim(), 10);
 
-    const records = await getRecord(orderNumber, pos);
+    if(!orderNumber || !pos ) return
+    if(orderNumber === "" || pos === "") return
+
+    if (isNaN(orderNumber) || isNaN(pos)) {
+      return; // Salir de la función si alguno no es un número
+    }
+
+    const records = await selectByPurchaseOrder(orderNumber, pos);
 
 
 
-    const matchedRecord = records
+    const matchedRecord = records[0]
 
-    if ((records.item !== 0 && records.item !== "" && records.item !== null && records.item !== undefined && records.item !== NaN) && (pos !== 0 && pos !== "" && pos !== undefined && pos !== NaN && pos !== null)) {
+    if ((records[0]?.item !== 0 && records[0]?.item !== "" && records[0]?.item !== null && records[0]?.item !== undefined && records[0]?.item !== NaN) && (pos !== 0 && pos !== "" && pos !== undefined && pos !== NaN && pos !== null)) {
       const { unit_price ,material_code, currency, description, supplier_id, total_quantity, approved_quantity, pending_quantity } = matchedRecord;
       if(parseFloat(approved_quantity) < parseFloat(total_quantity) ){
 
@@ -1224,10 +1281,6 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
   
   };
   
-  
-  
-  
-
 
 
 
@@ -1243,12 +1296,12 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
   return (
     <div className={`relative p-4 bg-gradient-to-tr from-gray-200 to-gray-300 border h-full border-gray-300 text-center rounded-3xl shadow-md flex flex-col`}>
     {isLoading2 && (
-      <Box display="flex" justifyContent="center" alignItems="center" height="400">
+      <Box bg="white" className=" left-0 top-0 absolute h-full w-full  z-50" display="flex" justifyContent="center" alignItems="center">
         <Spinner size="xl" />
         <Text ml={4}>Obteniendo Base de datos...</Text>
       </Box>
     )}
-     {!isLoading2 && (
+
        <>
        <HStack position="relative" width="100%" height="20%" >
 
@@ -1297,15 +1350,15 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
   </HStack>
   <HStack width="100%" ml="7px" h="30px" spacing={3}>
 
-    <Text className=" font-bold" fontSize="80%">Factura en: </Text>
+    <Text className=" font-bold" fontSize={iMediumScreen ? "60%": "80%"}>Factura en: </Text>
     <HStack>
-      <Text className=" font-semibold" fontSize="70%">COP</Text>
+      <Text className=" font-semibold" fontSize={iMediumScreen ? "55%": "70%"}>COP</Text>
       <Switch
         isDisabled={!isActive}
         isChecked={sharedState.TRM}
         onChange={handleSwitchChange}
       ></Switch>
-      <Text className="font-semibold" fontSize="70%">
+      <Text className="font-semibold" fontSize={iMediumScreen ? "55%": "70%"}>
 {selectedCurrency === 'USD' 
 ? 'USD' 
 : selectedCurrency === 'EUR' 
@@ -1322,15 +1375,15 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
 <VStack width="45%" spacing={0}>
   <HStack className=" bg-white rounded-2xl" padding="3" position="relative" width="100%" spacing={0}>
     <VStack spacing={0} align="start" justify="start" width="30%" >
-      <Text h="20%" className=" font-semibold" fontSize="70%">Descripcion:</Text>
-      <Text h="20%" className=" font-semibold" fontSize="70%">Cantidad OC:</Text>
-      <Text h="20%" className=" font-semibold" fontSize="70%">Valor en Dolares</Text>
+      <Text h="20%" className=" font-semibold" fontSize={iMediumScreen ? "60%": "70%"}>Descripcion:</Text>
+      <Text h="20%" className=" font-semibold" fontSize={iMediumScreen ? "60%": "70%"}>Cantidad OC:</Text>
+      <Text h="20%" className=" font-semibold" fontSize={iMediumScreen ? "60%": "70%"}>Valor en Dolares</Text>
 
     </VStack>
     <VStack spacing={0} align="end" justify="end" width="70%"  >
-      <Text h="20%" fontSize="70%">{sharedState.descripcion}</Text>
-      <Text h="20%" fontSize="70%">{sharedState.cantidadoc}</Text>
-      <Text h="20%" fontSize="70%">{formatMoney(parseFloat(sharedState.preciouni/100))}</Text>
+      <Text h="20%" fontSize={iMediumScreen ? "60%": "70%"}>{sharedState.descripcion}</Text>
+      <Text h="20%" fontSize={iMediumScreen ? "60%": "70%"}>{sharedState.cantidadoc}</Text>
+      <Text h="20%" fontSize={iMediumScreen ? "60%": "70%"}>{formatMoney(parseFloat(sharedState.preciouni/100))}</Text>
 
 
     </VStack>
@@ -1338,9 +1391,9 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
   <VStack position="relative" spacing={0}>
 
     {!sharedState.TRM && (
-      <HStack ml="40px" top={2} height="30px" width="300px" position="absolute">
-        <Text fontSize="70%">TRM Factura</Text>
-        <Input onClick={() => updateSharedState("TRMCOP", ) } isDisabled={!isActive} type="number" min="1" step="0.0000000001" value={(isTable !== "Create") ? sharedState.TRMCOP : undefined} onBlur={handleTRMCOP} h="25px" width="190px" bg="white"></Input>
+      <HStack  ml={iMediumScreen ? 28 : 8}  top={2} height="30px" width="300px" position="absolute">
+        <Text fontSize={iMediumScreen ? "50%": "70%"}>TRM Factura</Text>
+        <Input fontSize={iMediumScreen ? "70%": "90%"} onClick={() => updateSharedState("TRMCOP", ) } isDisabled={!isActive} type="number" min="1" step="0.0000000001" value={(isTable !== "Create") ? sharedState.TRMCOP : undefined} onBlur={handleTRMCOP} h="25px" width={iMediumScreen ? "40%" : "190px"} bg="white"></Input>
       </HStack>
     )}
   </VStack>
@@ -1352,17 +1405,17 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
 
 
   <HStack align="center" justify="center" height="20%" >
-    <VStack width="50%" align="start" justify="start"><Text fontSize="80%" className=" font-semibold">Peso Total</Text></VStack>
-    <VStack width="50%" align="end" justify="end"><Input isDisabled={!isActive} fontSize="80%" width="100%" height="20%" type="number" min="1" step="0.01" onChange={handlepesototal} value={(isTable !== "Create") ? sharedState.pesototal : undefined} backgroundColor='white' border='1px' /></VStack>
+    <VStack width="50%" align="start" justify="start"><Text fontSize={iMediumScreen ? "55%": "80%"} className=" font-semibold">Peso Total</Text></VStack>
+    <VStack width="50%" align="end" justify="end"><Input isDisabled={!isActive} fontSize={iMediumScreen ? "55%": "80%"} width="100%" height="20%" type="number" min="1" step="0.01" onChange={handlepesototal} value={(isTable !== "Create") ? sharedState.pesototal : undefined} backgroundColor='white' border='1px' /></VStack>
 
   </HStack>
   <HStack align="center" justify="center" height="20%" >
-    <VStack width="50%" align="start" justify="start"><Text fontSize="80%" type="numeric" className=" font-semibold">Bultos</Text></VStack>
-    <VStack width="50%" align="end" justify="end"><Input isDisabled={!isActive} fontSize="80%" width="100%" height="20%" type="number" min="1" step="1" onChange={handlebulto} value={(isTable !== "Create") ? sharedState.bultos : undefined} backgroundColor='white' border='1px' /></VStack>
+    <VStack width="50%" align="start" justify="start"><Text fontSize={iMediumScreen ? "55%": "80%"} type="numeric" className=" font-semibold">Bultos</Text></VStack>
+    <VStack width="50%" align="end" justify="end"><Input isDisabled={!isActive} fontSize={iMediumScreen ? "55%": "80%"} width="100%" height="20%" type="number" min="1" step="1" onChange={handlebulto} value={(isTable !== "Create") ? sharedState.bultos : undefined} backgroundColor='white' border='1px' /></VStack>
   </HStack>
   <HStack align="center" justify="center" height="20%" >
-    <VStack width="50%" align="start" justify="start"><Text fontSize="80%" className=" font-semibold">No. Factura</Text></VStack>
-    <VStack width="50%" align="end" justify="end"><Input isDisabled={!isActive} fontSize="80%" width="100%" height="20%" onChange={handleNoFactura} value={(isTable !== "Create") ? sharedState.nofactura : undefined} backgroundColor='white' border='1px' /></VStack>
+    <VStack width="50%" align="start" justify="start"><Text fontSize={iMediumScreen ? "55%": "80%"} className=" font-semibold">No. Factura</Text></VStack>
+    <VStack width="50%" align="end" justify="end"><Input isDisabled={!isActive} fontSize={iMediumScreen ? "55%": "80%"} width="100%" height="20%" onChange={handleNoFactura} value={(isTable !== "Create") ? sharedState.nofactura : undefined} backgroundColor='white' border='1px' /></VStack>
   </HStack>
 
 
@@ -1370,12 +1423,12 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
 </VStack>
 </HStack>
 <HStack height="7%" spacing={3}>
-<HStack padding="1" spacing={3} width="60%"><Text className=" font-bold  " fontSize="90%">Proveedor</Text><Text fontSize="90%">{String(sharedState.proveedor).slice(0.25)}</Text>
+<HStack padding="1" spacing={3} width="60%"><Text className=" font-bold  " fontSize={iMediumScreen ? "60%": "90%"}>Proveedor</Text><Text fontSize={iMediumScreen ? "60%": "80%"}>{String(sharedState.proveedor).slice(0.25)}</Text>
 </HStack>
 
 <HStack width="40%" align="end" justify="end">
-  <Text fontSize="90%" className=" font-bold">Subtotal de la factura</Text>
-  <Text fontSize="90%">{formatMoney(parseFloat(sharedState.totalfactura))}</Text>
+  <Text fontSize={iMediumScreen ? "60%": "90%"} className=" font-bold">Subtotal de la factura</Text>
+  <Text fontSize={iMediumScreen ? "60%": "90%"}>{formatMoney(parseFloat(sharedState.totalfactura))}</Text>
 </HStack>
 </HStack>
 <Modal isOpen={isOpen} onClose={onClose}>
@@ -1653,6 +1706,8 @@ Moneda seleccionada:
 
   afterChange={debounce(async (changes, source) => {
     if (source === 'edit' || source === 'CopyPaste.paste') {
+
+      if(!hotTableRef.current) return
       const hot = hotTableRef.current.hotInstance;
       const data = hot.getData();
 
@@ -1662,23 +1717,22 @@ Moneda seleccionada:
 
       for (const [rowIndex, colIndex, oldValue, newValue] of changes) {
         if (colIndex === 5) {
-          if (newValue === '**********') {
-            // Si la fila no está en el Set de filas con secuencia automática, no permitimos la edición
-          
-              // Usamos setTimeout para retrasar la verificación
-setTimeout(() => {
-  // Verificamos si la fila no está en el conjunto después de un breve retraso
-  if (!rowsWithAutoSequence.has(rowIndex)) {
-      batchChanges.push([rowIndex, colIndex, oldValue]); // Revertimos al valor anterior
-      console.log("Valor revertido después de la verificación.");
-      
-  } else {
-      console.log("La fila tiene secuencia automática, no se revertirá el valor.");
-  }
-}, 100); // Retraso de 100 ms (puedes ajustarlo según lo necesites)
-
-              
-
+          if (newValue === '**********' && oldValue !== '**********') {
+            // Si la fila no está en el contador global, revertimos el valor
+            if (!getCounter(rowIndex)) {
+              if(!isLoading2){
+                batchChanges.push([rowIndex, colIndex, ""]); // Revertimos al valor anterior
+              console.log("Valor revertido después de la verificación.");
+              }else{
+                updateGlobalCounter(rowIndex, "**********");  // Agregar al contador global
+                console.log("Evitamos una perdida")
+              }
+            } else {
+              console.log("La fila tiene secuencia automática, no se revertirá el valor.");
+            }
+  
+            // Actualizar el contador global para la fila
+            updateGlobalCounter(rowIndex, newValue);
           }
           try {
             const subheading = newValue;
@@ -1701,9 +1755,9 @@ setTimeout(() => {
         if (colIndex === 2) {
           const valueX = parseFloat(newValue);
           const value1 = parseFloat(hot.getDataAtCell(rowIndex, 0));
-          const record = await getRecord(orderNumber, value1);
+          const record = await selectByPurchaseOrder(orderNumber,value1);
 
-          if (valueX > parseFloat(record.total_quantity) || valueX < 1) {
+          if (valueX > parseFloat(record[0]?.total_quantity) || valueX < 1) {
             batchChanges.push([rowIndex, colIndex, ""]);
           }
         }
@@ -1732,11 +1786,18 @@ setTimeout(() => {
         promises.push((async () => {
           try {
             const pos = data[row][0];
-            const records = await getRecord(orderNumber,pos)
 
 
-            if (Number(records.item) === Number(pos)) {
-              const { material_code, unit_price, total_quantity, pending_quantity, approved_quantity } = records;
+            if(!orderNumber || !pos ) return
+            if(orderNumber === "" || pos === "") return
+            if (isNaN(orderNumber) || isNaN(pos)) {
+              return; // Salir de la función si alguno no es un número
+            }
+            const records = await selectByPurchaseOrder(orderNumber,pos)
+
+
+            if (Number(records[0]?.item) === Number(pos)) {
+              const { material_code, unit_price, total_quantity, pending_quantity, approved_quantity } = records[0];
 
               let hola = "";
 
@@ -1750,19 +1811,11 @@ setTimeout(() => {
 
                 batchChanges.push([row, 1, material_code]);
                 if (subheading) {
-                  
                   batchChanges.push([row, 5, "**********"]);
-                  setRowsWithAutoSequence((prevSet) => new Set(prevSet).add(row));
+                  updateGlobalCounter(row, "**********");  // Agregar al contador global
                 } else {
-                  
                   batchChanges.push([row, 5, subheading]);
-
-                  // Eliminar la fila del Set si la secuencia se borra
-                  setRowsWithAutoSequence((prevSet) => {
-                    const newSet = new Set(prevSet);
-                    newSet.delete(row);
-                    return newSet;
-                  });
+                  updateGlobalCounter(row, subheading);  // Eliminar del contador global
                 }
 
                 if (sharedState.TRM) {
@@ -1778,7 +1831,7 @@ setTimeout(() => {
                 setfacttotalvalue(cellValue * unit_price);
               }
             } else {
-              console.warn(`No matching record found for row ${row}`);
+              console.log(`No matching record found for row ${row}`);
             }
           } catch (error) {
             console.error(`Error processing records for row ${row}:`, error);
@@ -1795,11 +1848,15 @@ setTimeout(() => {
           });
         });
       }
+      setTimeout(() => {
+        hot.render();
+        console.log("Tabla refrescada después de cambios.");
+      }, 500);
     }
   }, 300)} 
 
 
-
+  
 
   contextMenu={{
     items: {
@@ -1817,7 +1874,7 @@ setTimeout(() => {
      )}
        </>
      
-     )}
+     
     </div>
   );
 }
