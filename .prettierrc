@@ -1,0 +1,18 @@
+{
+  "plugins": ["prettier-plugin-sql"],
+  "experimentalTernaries": true,
+  "bracketSameLine": true,
+  "overrides": [
+    {
+      "files": ["*.sql"],
+      "options": {
+        "language": "postgresql",
+        "keywordCase": "upper",
+        "dataTypeCase": "upper",
+        "functionCase": "upper",
+        "identifierCase": "lower",
+        "linesBetweenQueries": 2
+      }
+    }
+  ]
+}
