@@ -90,11 +90,10 @@ export async function deleteAccount() {
 
   if (userError) throw userError;
 
-  const { error } = await supabase.functions.invoke("delete-user", {
-    body: { user_id: userData.user.id },
-  });
+  const { data, error } = await supabase.from("profiles").delete().eq("profile_id", userData.user.id);
 
   if (error) throw error;
+  else return data;
 }
 
 export async function removeUser(user_id: string) {
@@ -104,17 +103,8 @@ export async function removeUser(user_id: string) {
 
   if (userError) throw userError;
 
-  const { data: userTarget, error: userTargetError } = await supabase
-    .from("profiles")
-    .select("profile_id")
-    .eq("user_id", user_id)
-    .limit(1)
-    .single();
+  const { data, error } = await supabase.from("profiles").delete().eq("profile_id", user_id);
 
-  if (userTargetError) throw userTargetError;
-
-  const { error } = await supabase.functions.invoke("delete-user", {
-    body: { user_id: userTarget.profile_id },
-  });
   if (error) return handleError(error);
+  else return data;
 }
