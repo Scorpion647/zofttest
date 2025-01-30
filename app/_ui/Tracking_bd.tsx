@@ -626,7 +626,6 @@ export const Tracking_bd = () => {
                                         backgroundColor='white'
                                     >
                                         <option value="all">Todos</option>
-                                        <option value="2024">2024</option>
                                         <option value="2025">2025</option>
                                     </Select>
                                     <Select

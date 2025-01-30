@@ -108,9 +108,7 @@ export const CreatelargeDomain = () => {
                                 <SearchIcon w={5} h={5} color='black' />
                             </Button>
                         </HStack>
-                        <Button colorScheme='teal' backgroundColor='#F1D803'>
-                            <AddIcon w={5} h={5} color='black' />
-                        </Button>
+                        
                     </Flex>
                     <VStack border="1px" borderColor="gray.200" w="100%" bgColor="gray.200" height="400" justify='flex-start' alignItems="flex-start">
                         <VStack whiteSpace="nowrap" justifyContent='center' alignItems="center" bg="gray.200" w="100%" h="50">

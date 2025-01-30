@@ -164,7 +164,9 @@ const [currentPage, setCurrentPage] = useState(1); // Página inicial
  
  const nextpages = async () => {
   if(!isFetchingRef.current){
-    setCurrentPage(currentPage + 1)
+    if(nextpage === true){
+      setCurrentPage(currentPage + 1)
+    }
   }
  }
   

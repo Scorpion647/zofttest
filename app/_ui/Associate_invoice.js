@@ -414,11 +414,22 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
 
   const handleOrderNumberChange = async (e) => {
     setOrderNumber(e.target.value);
-    const record = await getRecord(e.target.value, 1)
-    const suplier = await getSupplier(record.supplier_id)
+    const order = e.target.value
+    try{
+
+      const record = await selectBills({limit: 1, page: 1, equals: {purchase_order: order}})
+
+      
+    const suplier = await getSupplier(record[0].supplier_id)
+
     if (suplier.name !== null && suplier.name !== undefined && suplier !== "") {
+
       updateSharedState('proveedor', suplier.name);
     } else {
+      updateSharedState('proveedor', "");
+
+    }
+    }catch{
       updateSharedState('proveedor', "");
     }
   };
@@ -1093,6 +1104,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
     let suname = "";
     let email = "";
     let hasCompleteRow = false;
+    let subheading = []
   
     for (const [index, row] of tableData.entries()) {
       const isEmptyRow = row.every(cell => cell === null || cell === '' || cell === undefined);
@@ -1133,7 +1145,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
         if (subheading !== "**********") {
           const valida = await getMaterial(material_code);
           if (valida.material_code !== undefined) {
-            //en caso de ya tener valor asignado
+            await updateMaterial(material_code,{subheading: subheading})
           } else {
             await insertMaterial({ material_code: material_code, subheading: subheading });
           }

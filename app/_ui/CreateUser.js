@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useToast, useMediaQuery,Checkbox,ChakraProvider, Flex, Box, VStack, Heading, HStack, Menu, MenuButton, MenuList, MenuItem, Button, Text, Input, useDisclosure, Select } from "@chakra-ui/react";
 import { SearchIcon, CheckIcon, CloseIcon, AddIcon, ArrowForwardIcon, ArrowBackIcon } from "@chakra-ui/icons";
-import { getProfile, selectProfiles} from "../_lib/database/profiles";
+import { getProfile, removeUser, selectProfiles} from "../_lib/database/profiles";
 import { insertSupplier, selectSingleSupplier, selectSuppliers } from "../_lib/database/suppliers";
 import { insertSupplierEmployee } from "../_lib/database/supplier_employee";
 import { insertEmployee, updateProfile } from "../_lib/database/service";
@@ -15,15 +15,6 @@ import { insertEmployee, updateProfile } from "../_lib/database/service";
 
 
 
-
-const create = [
-    { email: "jcastroc1@unicartagena.edu.co" },
-    { email: "jhoyflow15@gmail.com" },
-    { email: "jhoyflow@hotmail.com" },
-    
-
-
-]
 
 
 
@@ -184,6 +175,28 @@ const handlesupplier = (e) => {
     const [iSmallScreen] = useMediaQuery("(max-width: 768px)");
     const [iMediumScreen] = useMediaQuery("(min-width: 768px) and (max-width: 1024px)");
     const [iLargeScreen] = useMediaQuery("(min-width: 1024px)");
+
+
+    const Delete = async (email) => {
+
+            try{
+                console.log("hola1")
+                const user = await selectProfiles({limit: 1, page: 1, equals: {email: email}})
+                console.log("hola2")
+                if(user){
+                    console.log("hola3")
+                    const borrar = await removeUser(user[0].profile_id)
+                    console.log("hola4")
+                    toast({ title: "Usuario Rechazado con exito", description: `El Usuario se le ha negado el registro al sistema`, status: "success", duration: 3000, isClosable: true });
+                    console.log("hola5")
+                    FetchData()
+                }
+            }catch (error){
+                console.error("Error es: ",error)
+                toast({ title: "Error al rechazar Usuario", description: `Hubo un problema al rechazar al usuario, porfavor intentelo mas tarde`, status: "error", duration: 5000, isClosable: true });
+            
+        }
+    }
    
      
 return(
@@ -206,7 +219,7 @@ return(
                                 </HStack>
                                 <HStack spacing={4} alignItems="center" justify="center" w={iSmallScreen ? "40%" : "20%"}>
                                     <Button  bg="red">
-                                        <CloseIcon w={3} h={3} color="white" />
+                                        <CloseIcon w={3} h={3} color="white" onClick={() => Delete(item.email)} />
                                     </Button>
                                     <Button onClick={() => (setisAccept(true), setEmail(item.email))} bg="green">
                                         <CheckIcon w={3} h={3} color="white" />
