@@ -48,29 +48,46 @@ export default function Userpage() {
 
 
   function transformName(name: string) {
-    // Limitar a 20 caracteres
-    if (name.length > 20) {
-        name = name.slice(0, 20);
-    }
+     // 1. Limpiar espacios y normalizar
+  const cleaned = name
+  .trim() // Eliminar espacios al inicio y final
+  .replace(/\s+/g, ' ') // Colapsar múltiples espacios a uno solo
+  .replace(/^\s+|\s+$/g, ''); // Eliminar espacios sobrantes nuevamente
 
-    // Dividir el nombre en partes
-    const parts = name.split(' ');
+if (!cleaned) return '';
 
-    if (parts.length === 1) {
-        // Un solo nombre
-        return name;
-    } else if (parts.length === 2) {
-        // Dos nombres
-        return name; // Retorna el nombre completo
-    } else {
-        // Más de dos nombres
-        const initial = parts[parts.length - 1].charAt(0) + '.'; // Obtener la inicial del último nombre
-        const transformed = parts.slice(0, parts.length - 1).join(' ') + ' ' + initial; // Unir los nombres restantes con la inicial
-        return transformed.length > 20 ? transformed.slice(0, 20) : transformed; // Asegurarse que no exceda 20 caracteres
-    }
+// 2. Dividir en palabras
+const words = cleaned.split(' ');
+
+// 3. Aplicar reglas según cantidad de palabras
+if (words.length === 1) {
+  // Caso 1: Una sola palabra
+  return words[0].substring(0, 10);
+} else {
+  // Caso 2: Dos o más palabras (tomamos solo las primeras dos)
+  const [first, second] = words.slice(0, 2);
+  const combinedLength = first.length + second.length;
+
+  // 3a. Si la suma de caracteres <= 10
+  if (combinedLength <= 10) {
+    // Verificar si la primera palabra excede 8 caracteres
+    const adjustedFirst = first.length > 8 ? first.substring(0, 8) : first;
+    return `${adjustedFirst} ${second}`.substring(0, 10 + 1); // +1 por el espacio
+  }
+  // 3b. Si la suma excede 10 caracteres
+  else {
+    const truncatedFirst = first.substring(0, 8);
+    const processedSecond = second[0] ? `${second[0]}.` : '';
+    return `${truncatedFirst} ${processedSecond}`;
+  }
+}
 }
 
-
+console.log(transformName("jhoy castro"))
+console.log(transformName("jhoy castro casanova"))
+console.log(transformName("jhoy casanova"))
+console.log(transformName("jhoyluis castro"))
+console.log(transformName("jhoylasq castro"))
 
   const handleLogout = async () => {
     try {

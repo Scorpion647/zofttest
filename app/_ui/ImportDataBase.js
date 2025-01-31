@@ -871,6 +871,41 @@ export const ImportDataBase = () => {
           setProgress(progress);
         }
       } else if (selectedTable === "Materiales") {
+
+       
+        const [material_code, subheading, type, measurement_unit] = row;
+        if(!material_code){
+          invalidmaterials.push({
+            material_code: "VACIO",
+            subheading: subheading,
+            types: (type  ? String(type) : "VACIO"),
+            measurement_unit: (measurement_unit ? measurement_unit : "VACIO")
+          })
+          completedTasks += 1;
+          continue;
+        }
+
+        const normalizedMaterialCode = String(material_code).trim().toLowerCase();
+
+const existingmaterial = materialsToInsert.find(
+  record => String(record.material_code).trim().toLowerCase() === normalizedMaterialCode
+);
+
+
+if (existingmaterial) {
+  cont1 = cont1 + 1;
+  completedTasks += 1;
+  continue;
+}
+
+        const materialArgs = { material_code: material_code };
+
+        if (subheading) {
+          if (String(subheading).length === 10) {
+            materialArgs.subheading = String(subheading);
+          } 
+        }
+
         const typeMapping = {
           "national": "national",
           "NATIONAL": "national",
@@ -890,76 +925,30 @@ export const ImportDataBase = () => {
           "otro": "other",
         };
         
-        // Optimizar la búsqueda utilizando Sets
-        const existingMaterialCodes = new Set(materialsToInsert.map(record => String(record.material_code).trim().toLowerCase()));
-        
-        const fetchMaterials = [];  // Para manejar las promesas de getMaterial
-        
-        for (const row of rows) {
-          const [material_code, subheading, type, measurement_unit] = row;
-        
-          if (!material_code) {
-            invalidmaterials.push({
-              material_code: "VACIO",
-              subheading: subheading,
-              types: (type ? String(type) : "VACIO"),
-              measurement_unit: (measurement_unit ? measurement_unit : "VACIO"),
-            });
-            completedTasks += 1;
-            continue;
-          }
-        
-          const normalizedMaterialCode = String(material_code).trim().toLowerCase();
-        
-          // Evitar buscar si ya existe en materialsToInsert
-          if (existingMaterialCodes.has(normalizedMaterialCode)) {
-            cont1 += 1;
-            completedTasks += 1;
-            continue;
-          }
-        
-          const materialArgs = { material_code: material_code };
-        
-          if (subheading && String(subheading).length === 10) {
-            materialArgs.subheading = String(subheading);
-          }
-        
-          // Mapear el tipo de material
-          if (typeMapping[type]) {
-            materialArgs.type = typeMapping[type];
-          }
-        
-          if (measurement_unit) materialArgs.measurement_unit = measurement_unit;
-        
-          // Agregar la promesa de getMaterial a la lista para ejecución paralela
-          fetchMaterials.push(
-            getMaterial(material_code).then(revisar => {
-              if (revisar.material_code === material_code) {
-                const updateNeeded = revisar.type !== materialArgs.type || revisar.measurement_unit !== materialArgs.measurement_unit;
-                if (updateNeeded) {
-                  // Realizar la actualización si es necesario
-                }
-              } else {
-                materialsToInsert.push(materialArgs);
-              }
-        
-              completedTasks += 1;
-        
-              if (completedTasks % updateThreshold === 0 || completedTasks === totalTasks) {
-                const progress = (completedTasks / totalTasks) * 100;
-                setProgress(progress);
-              }
-            }).catch(err => {
-              // Manejar errores en las promesas de getMaterial
-              console.error("Error al obtener material:", err);
-              completedTasks += 1;
-            })
-          );
+
+        if (typeMapping[type]) {
+          materialArgs.type = typeMapping[type]
         }
-        
-        // Esperar a que todas las promesas se resuelvan
-        await Promise.all(fetchMaterials);
-        
+
+        if (measurement_unit) materialArgs.measurement_unit = measurement_unit;
+
+        const revisar = await getMaterial(material_code)
+        if (revisar.material_code === material_code) {
+          const updateNeeded = revisar.type !== materialArgs.type || revisar.measurement_unit !== materialArgs.measurement_unit;
+          if (updateNeeded) {
+            //poner que suscede al actualizar
+          }
+         
+        } else {
+          materialsToInsert.push(materialArgs);
+        }
+        completedTasks += 1;
+
+
+        if (completedTasks % updateThreshold === 0 || completedTasks === totalTasks) {
+          const progress = (completedTasks / totalTasks) * 100;
+          setProgress(progress);
+        }
       } else if (selectedTable === "Proveedores") {
 
         const [domain, name] = row;

@@ -465,7 +465,11 @@ const data4 = Typematerial(type);
       //alert(active.state + "     " + origin + "     " + status + "       " + numbeer)
       if(active.state !== origin || active.state !== status){
         if(numbeer > 0){
-          sendEmail(suppliers,("El estado de su asociacion a sido cambiado por : "+(status === "approved" ? "Aprobado" : (status === "pending" ? "Pendiente" : "Rechazado") )),textValue)
+          sendEmail(suppliers,("El estado de su asociacion a sido cambiado por : "+(status === "approved" ? "Aprobado" : (status === "pending" ? "Pendiente" : "Rechazado") )),(status === "rejected" ? textValue : undefined))
+          if(status !== "rejected" && (active.feedback !== "" && active.feedback !== null)){
+            await updateInvoice({invoice_id: suppliers, feedback: "" })
+          }
+          setTextValue("")
         }
       }
     }
@@ -674,10 +678,30 @@ const { isOpen: isOpen5, onOpen: onOpen5, onClose: onClose5 } = useDisclosure();
   
 
 
-const handleTextChange = useCallback((e) => {
-  let frase = e.target.value
-  setTextValue(e.target.value);
-}, []); // Solo se define una vez
+  const typingTimeoutRef = useRef(null);
+
+
+  const saveText = (value) => {
+    alert("Guardando texto: " + value);
+  };
+
+  const handleTextChange = (e) => {
+    const value = e.target.value;
+
+    // Si el usuario sigue escribiendo, reseteamos el timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    // Esperamos 1 segundo después del último cambio antes de guardar
+    typingTimeoutRef.current = setTimeout(() => {
+      //saveText(value)
+      setTextValue(value)
+    }, 500);
+  };
+
+
+
  
 
   return (
@@ -779,8 +803,8 @@ const handleTextChange = useCallback((e) => {
     <ModalCloseButton onClick={() => setStatus("pending")}/>
     <ModalBody>
       <Textarea
-        value={textValue}
         onChange={handleTextChange}
+        ona
         placeholder="Escribe aquí tu texto"
         bgColor="gray.200"
         size="lg"

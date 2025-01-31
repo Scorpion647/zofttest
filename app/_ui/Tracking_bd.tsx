@@ -251,7 +251,7 @@ export const Tracking_bd = () => {
                                     let conversion = 0;
                                     const exits_material = await selectSingleMaterial(bill[0].material_code);
                                     if (exits_material) {
-                                        
+                                            material = exits_material.material_code
                                         try{
                                             const check = await selectSingleMaterial(`${bill[0].material_code}-N`);
                                             console.log("hola7")
@@ -273,7 +273,7 @@ export const Tracking_bd = () => {
                                         }catch{
                                             console.log("hola0")
                                         console.log("hola1")
-                                            material = bill[0].purchase_order;
+
                                             console.log("hola2")
                                             if (!exits_material.subheading) return;
                                             console.log("hola3")
@@ -706,8 +706,6 @@ export const Tracking_bd = () => {
                                                 />
                                     )}
                                     <Button
-                                        onClick={handleClick}
-                                        onDoubleClick={handleDoubleClick}
                                         whiteSpace="nowrap"
                                         paddingRight={2}
                                         paddingLeft={2}

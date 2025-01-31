@@ -149,29 +149,7 @@ export const CreatelargeDomain = () => {
                                             </HStack>
                                             <Text fontSize={iSmallScreen ? "60%" : "100%"} width="60%">{supplier.name}</Text>
                                             <VStack width="10%">
-                                                <Menu>
-                                                    <MenuButton
-                                                        as={Button}
-                                                        variant="ghost"
-                                                        width={4}
-                                                        height={5}
-                                                        onClick={(e) => {
-                                                            e.stopPropagation(); // Evita que el click en el botón se propague a la caja
-                                                        }}
-                                                    >
-                                                        <Icon
-                                                            as={IoEllipsisVerticalSharp}
-                                                            w={4}
-                                                            h={4}
-                                                            color='black'
-                                                            cursor="pointer" // Cambia el cursor a puntero
-                                                        />
-                                                    </MenuButton>
-                                                    <MenuList placement="top" onClick={(e) => e.stopPropagation()}>
-                                                        <MenuItem onClick={handleOptionOne}>Opción 1</MenuItem>
-                                                        <MenuItem onClick={handleOptionTwo}>Opción 2</MenuItem>
-                                                    </MenuList>
-                                                </Menu>
+                                                
                                             </VStack>
                                         </HStack>
                                     </Box>
