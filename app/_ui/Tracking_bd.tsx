@@ -438,7 +438,7 @@ export const Tracking_bd = () => {
                                     try{
                                         subtotal = ((sup.billed_unit_price/100)* sup.billed_quantity) + subtotal
                                         
-                                        fob = parseFloat(((((sup.billed_unit_price/100)* sup.billed_quantity)/ sup.trm)).toFixed(2)) + fob
+                                        fob = parseFloat(((((sup.billed_unit_price/100)* sup.billed_quantity)/ (sup.billed_currency === "USD"? 1 : sup.trm))).toFixed(2)) + fob
                                     }catch{
 
                                     }

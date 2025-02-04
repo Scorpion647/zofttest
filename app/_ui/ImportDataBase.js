@@ -21,15 +21,12 @@ import {
 } from '@chakra-ui/react';
 import { FaCloudArrowUp } from "react-icons/fa6";
 import { getMaterial, getRecords, getMaterials, getSuppliers, getSupplier, getRecord } from '@/app/_lib/database/service';
-import { selectByPurchaseOrder } from '../_lib/database/base_bills';
 import { AddIcon, CloseIcon, EditIcon } from '@chakra-ui/icons';
 import { insertBills, selectBills } from '../_lib/database/base_bills';
 import { insertMaterial, selectMaterials, selectSingleMaterial, updateMaterial } from '../_lib/database/materials';
 import { insertSupplier, selectSingleSupplier, selectSuppliers } from '../_lib/database/suppliers';
-import { FaEdit } from "react-icons/fa";
-import { LuRefreshCw } from "react-icons/lu";
-import { SiGoogleforms } from "react-icons/si";
 import { FaWpforms } from "react-icons/fa6";
+
 
 
 // Simulamos una función para obtener datos de una base de datos
@@ -55,7 +52,7 @@ const headers = {
   Registros: ["Documento compras", "Posición", "Material", "Texto breve", "Cantidad de pedido", "Unidad medida pedido", "Precio neto", "Valor neto de pedido", "Nombre del proveedor", "Moneda"],
 };
 
-export const ImportDataBase = () => {
+export const ImportDataBase = ({ sharedState, updateSharedState}) => {
 
 
   function normalizeNumber(input) {
@@ -100,6 +97,7 @@ export const ImportDataBase = () => {
   const [iSmallScreen] = useMediaQuery("(max-width: 768px)");
   const [iMediumScreen] = useMediaQuery("(min-width: 768px) and (max-width: 1024px)");
   const [iLargeScreen] = useMediaQuery("(min-width: 1024px)");
+
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -738,6 +736,7 @@ export const ImportDataBase = () => {
   }, [Cancelar]);
   const validateAndInsertData = async () => {
     setIsProcessing(true);
+    updateSharedState("ButtonDisabled", true)
     setProgress(0)
     let totalTasks = data.length;
     let completedTasks = 0;
@@ -787,6 +786,7 @@ export const ImportDataBase = () => {
             isClosable: true,
           });
           setIsProcessing(false);
+          updateSharedState("ButtonDisabled", false)
           return; 
         } else {
           setCancelar(false);  
@@ -1076,6 +1076,7 @@ if (existingmaterial) {
       
 
     setIsProcessing(false);
+    updateSharedState("ButtonDisabled", false)
     toast({ title: "Formulario enviado", description: `El formulario del ${selectedTable} se ha enviado correctamente.`, status: "success", duration: 3000, isClosable: true });
   };
 

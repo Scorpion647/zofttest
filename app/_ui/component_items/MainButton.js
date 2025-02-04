@@ -11,7 +11,7 @@ const useScreenSize = () => {
   if (isLargeScreen) return "Grande";
 };
 
-const MainButton = ({ onClick, text, icon, backgroundColor = '#F1D803', disabled = false, showRightBox, isScreenSmall, MenuL }) => {
+const MainButton = ({ onClick, text, icon, backgroundColor = '#F1D803', isDisabled , showRightBox, isScreenSmall, MenuL }) => {
   const screenSize = useScreenSize();
 
   return (
@@ -23,9 +23,9 @@ const MainButton = ({ onClick, text, icon, backgroundColor = '#F1D803', disabled
       display="block"
       whiteSpace='normal'
       colorScheme={screenSize === "Pequeña" ? "transparent" : "white"}
-      backgroundColor={disabled ? 'gray.300' : backgroundColor}
+      backgroundColor={isDisabled ? 'gray.300' : backgroundColor}
       transition="width 0.3s ease-in-out"
-      isDisabled={disabled}
+      isDisabled={isDisabled}
     >
       <HStack justify='center'>
         {((!showRightBox && !isScreenSmall) && !MenuL) && (

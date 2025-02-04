@@ -420,13 +420,13 @@ const trm = supdata.trm || 1; // Asegúrate de que trm no sea 0 o indefinido
 
 // Optimiza los cálculos
 const totalInLocalCurrency = billedUnitPriceInUSD * quantity;
-const totalInUSD = totalInLocalCurrency / trm;
+const totalInUSD = totalInLocalCurrency / (supdata.billed_currency === "USD" ? 1 :  trm);
 
 // Formatea los resultados
 const data1 = formatMoney(totalInUSD);                  // Precio total en USD
 const data2 = formatMoney(billedUnitPriceInUSD);         // Precio unitario en USD
 const data3 = formatMoney(totalInLocalCurrency);         // Precio total en la moneda local
-const data4 = Typematerial(type);    
+const data4 = Typematerial(type);
         data.push([
           oc, // OC
           record.item,           // ITEMS
@@ -435,7 +435,7 @@ const data4 = Typematerial(type);
           supdata.billed_quantity, // CANT
           record.measurement_unit, // UND
           sup.name,              // PROVEEDOR
-          parseFloat(parseFloat((supdata.billed_unit_price / 100) / supdata.trm).toFixed(8)), // FOB_UNIT
+          parseFloat(parseFloat((supdata.billed_unit_price / 100) / (supdata.billed_currency === "USD" ? 1 :  supdata.trm) ).toFixed(8)), // FOB_UNIT
           supdata.bill_number,   // FACTURA
           subheading,            // PA
           unidad,                // UC

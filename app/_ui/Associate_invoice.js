@@ -1384,7 +1384,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
 <HStack width="2.5%">
 
 </HStack>
-<VStack width="45%" spacing={0}>
+<VStack width="40%" spacing={0}>
   <HStack className=" bg-white rounded-2xl" padding="3" position="relative" width="100%" spacing={0}>
     <VStack spacing={0} align="start" justify="start" width="30%" >
       <Text h="20%" className=" font-semibold" fontSize={iMediumScreen ? "60%": "70%"}>Descripcion:</Text>
@@ -1403,7 +1403,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
   <VStack position="relative" spacing={0}>
 
     {!sharedState.TRM && (
-      <HStack  ml={iMediumScreen ? 28 : 8}  top={2} height="30px" width="300px" position="absolute">
+      <HStack  ml={iMediumScreen ? 40 : 20}  top={2} height="30px" width="300px" position="absolute">
         <Text fontSize={iMediumScreen ? "50%": "70%"}>TRM Factura</Text>
         <Input fontSize={iMediumScreen ? "70%": "90%"} onClick={() => updateSharedState("TRMCOP", ) } isDisabled={!isActive} type="number" min="1" step="0.0000000001" value={(isTable !== "Create") ? sharedState.TRMCOP : undefined} onBlur={handleTRMCOP} h="25px" width={iMediumScreen ? "40%" : "190px"} bg="white"></Input>
       </HStack>
@@ -1413,21 +1413,21 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
 <HStack width="2.5%">
 
 </HStack>
-<VStack className=" bg-white rounded-2xl" padding="3" width="20%" spacing="3px" textAlign='center' justifyContent="center" alignItems='center'>
+<VStack className=" bg-white rounded-2xl" padding="3" width="25%" spacing="3px" textAlign='center' justifyContent="center" alignItems='center'>
 
 
   <HStack align="center" justify="center" height="20%" >
-    <VStack width="50%" align="start" justify="start"><Text fontSize={iMediumScreen ? "55%": "80%"} className=" font-semibold">Peso Total</Text></VStack>
-    <VStack width="50%" align="end" justify="end"><Input isDisabled={!isActive} fontSize={iMediumScreen ? "55%": "80%"} width="100%" height="20%" type="number" min="1" step="0.01" onChange={handlepesototal} value={(isTable !== "Create") ? sharedState.pesototal : undefined} backgroundColor='white' border='1px' /></VStack>
+    <VStack width="40%" align="start" justify="start"><Text fontSize={iMediumScreen ? "55%": "80%"} className=" font-semibold">Peso Total</Text></VStack>
+    <VStack width="60%" align="end" justify="end"><Input isDisabled={!isActive} fontSize={iMediumScreen ? "55%": "80%"} width="100%" height="20%" type="number" min="1" step="0.01" onChange={handlepesototal} value={(isTable !== "Create") ? sharedState.pesototal : undefined} backgroundColor='white' border='1px' /></VStack>
 
   </HStack>
   <HStack align="center" justify="center" height="20%" >
-    <VStack width="50%" align="start" justify="start"><Text fontSize={iMediumScreen ? "55%": "80%"} type="numeric" className=" font-semibold">Bultos</Text></VStack>
-    <VStack width="50%" align="end" justify="end"><Input isDisabled={!isActive} fontSize={iMediumScreen ? "55%": "80%"} width="100%" height="20%" type="number" min="1" step="1" onChange={handlebulto} value={(isTable !== "Create") ? sharedState.bultos : undefined} backgroundColor='white' border='1px' /></VStack>
+    <VStack width="40%" align="start" justify="start"><Text fontSize={iMediumScreen ? "55%": "80%"} type="numeric" className=" font-semibold">Bultos</Text></VStack>
+    <VStack width="60%" align="end" justify="end"><Input isDisabled={!isActive} fontSize={iMediumScreen ? "55%": "80%"} width="100%" height="20%" type="number" min="1" step="1" onChange={handlebulto} value={(isTable !== "Create") ? sharedState.bultos : undefined} backgroundColor='white' border='1px' /></VStack>
   </HStack>
   <HStack align="center" justify="center" height="20%" >
-    <VStack width="50%" align="start" justify="start"><Text fontSize={iMediumScreen ? "55%": "80%"} className=" font-semibold">No. Factura</Text></VStack>
-    <VStack width="50%" align="end" justify="end"><Input isDisabled={!isActive} fontSize={iMediumScreen ? "55%": "80%"} width="100%" height="20%" onChange={handleNoFactura} value={(isTable !== "Create") ? sharedState.nofactura : undefined} backgroundColor='white' border='1px' /></VStack>
+    <VStack width="40%" align="start" justify="start"><Text fontSize={iMediumScreen ? "55%": "80%"} className=" font-semibold">No. Factura</Text></VStack>
+    <VStack width="60%" align="end" justify="end"><Input isDisabled={!isActive} fontSize={iMediumScreen ? "55%": "80%"} width="100%" height="20%" onChange={handleNoFactura} value={(isTable !== "Create") ? sharedState.nofactura : undefined} backgroundColor='white' border='1px' /></VStack>
   </HStack>
 
 
@@ -1639,7 +1639,7 @@ Moneda seleccionada:
           cellProperties.renderer = (hotInstance, td, row, col, prop, value, cellProperties) => {
             Handsontable.renderers.TextRenderer(hotInstance, td, row, col, prop, value, cellProperties);
 
-            td.setAttribute('title', 'Campo no cumple el parámetro de 10 digitos');
+            td.setAttribute('title', 'Registre subpartida, parámetro de 10 digitos obligatorio');
             if(length > 0 && length < 10){
               td.style.backgroundColor = reset.backgroundColor;
               td.innerHTML = '';

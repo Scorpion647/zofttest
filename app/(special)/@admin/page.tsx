@@ -389,6 +389,7 @@ export default function Admin() {
                     showRightBox={showRightBox}
                     isScreenSmall={iSmallScreen}
                     MenuL={MenuL}
+                    isDisabled={state.ButtonDisabled}
                   />
                   <MainButton
                     onClick={() => screen(2)}
@@ -404,6 +405,7 @@ export default function Admin() {
                     showRightBox={showRightBox}
                     isScreenSmall={iSmallScreen}
                     MenuL={MenuL}
+                    isDisabled={state.ButtonDisabled}
                   />
                   <MainButton
                     onClick={() => screen(3)}
@@ -419,6 +421,7 @@ export default function Admin() {
                     showRightBox={showRightBox}
                     isScreenSmall={iSmallScreen}
                     MenuL={MenuL}
+                    isDisabled={state.ButtonDisabled}
                   />
                   <MainButton
                     onClick={() => screen(4)}
@@ -434,6 +437,7 @@ export default function Admin() {
                     showRightBox={showRightBox}
                     isScreenSmall={iSmallScreen}
                     MenuL={MenuL}
+                    isDisabled={state.ButtonDisabled}
                   />
 
 <MainButton
@@ -450,6 +454,7 @@ export default function Admin() {
                     showRightBox={showRightBox}
                     isScreenSmall={iSmallScreen}
                     MenuL={MenuL}
+                    isDisabled={state.ButtonDisabled}
                   />
                   
                 </VStack>
@@ -467,7 +472,9 @@ export default function Admin() {
                     onClick={() => screen(2)}
                       position="relative"
                       colorScheme="transparent"
-                      bg="transparent">
+                      bg="transparent"
+                      isDisabled={state.ButtonDisabled}
+                      >
                       {(PendingUsers > 0) && (
                         <Text
                         bottom="5"
@@ -480,6 +487,7 @@ export default function Admin() {
                       </Text>
                       )}
                       <Icon w={4} h={4} color="black" as={FaUserCheck} />
+                      
                     </Button>
                     </Tooltip>
                     <Tooltip label={Pendingbills > 0 ? "Hay Registros pendiente": ""}>
@@ -487,7 +495,9 @@ export default function Admin() {
                     onClick={() => screen(1)}
                       position="relative"
                       colorScheme="transparent"
-                      bg="transparent">
+                      bg="transparent"
+                      isDisabled={state.ButtonDisabled}
+                      >
                       {(Pendingbills > 0) && (
                         <Text
                         bottom="5"
@@ -559,7 +569,10 @@ export default function Admin() {
                     <>
                     
                        
-                          <ImportDataBase />
+                          <ImportDataBase 
+                          sharedState={state}
+                          updateSharedState={updateState}
+                          />
                        
                       
                       

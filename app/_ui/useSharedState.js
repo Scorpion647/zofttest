@@ -30,6 +30,7 @@ export function useSharedState() {
     pesostotal: 0,
     bultostotal: 0,
     totalfacturas: 0,
+    ButtonDisabled: false,
 
 
   });
