@@ -72,6 +72,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
   const pruebas = async () => {
     let tfactura = 0;
     let Copia = [];
+    let cantidad = 0
     try {
       const hot = hotTableRef.current.hotInstance;
     if (!hot || hot.isDestroyed) return;
@@ -150,6 +151,10 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
       console.log("hola23")
       await Promise.all(billPromises);
       console.log("hola24")
+      
+      console.log("contador: " + cont)
+      cantidad = Math.ceil(cont / 10)
+      console.log("Esto es cantidad: " + cantidad)
 
     // Actualización final del estado
     
@@ -236,7 +241,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
     console.log("hola37")
       setTimeout(() => {
         setIsLoading2(false)
-      }, 7000);
+      }, ((7 * cantidad)* 1000));
       console.log("hola38")
 
     }
