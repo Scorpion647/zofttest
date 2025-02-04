@@ -75,7 +75,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
     try {
       const hot = hotTableRef.current.hotInstance;
     if (!hot || hot.isDestroyed) return;
-      //setIsLoading2(true)
+      setIsLoading2(true)
       console.log("hola1")
       const invoice = await selectSingleInvoice(invoi);
       console.log("hola2")
@@ -234,9 +234,9 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
       const hot = hotTableRef.current.hotInstance;
     if (!hot || hot.isDestroyed ) return;
     console.log("hola37")
-      /*setTimeout(() => {
+      setTimeout(() => {
         setIsLoading2(false)
-      }, 7000);*/
+      }, 7000);
       console.log("hola38")
 
     }
