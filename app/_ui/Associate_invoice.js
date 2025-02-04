@@ -208,13 +208,13 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
           });
       });
       console.log("hola34")
-      // Usa el hook `afterLoadData` para confirmar cuando los datos han sido recargados
+      /*// Usa el hook `afterLoadData` para confirmar cuando los datos han sido recargados
       await new Promise((resolve) => {
           hot.addHookOnce('afterLoadData', () => {
               console.log("Datos cargados en la tabla.");
               resolve();
           });
-      });
+      });*/
       console.log("hola35")
 
 
