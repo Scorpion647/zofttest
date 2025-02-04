@@ -75,18 +75,20 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
     try {
       const hot = hotTableRef.current.hotInstance;
     if (!hot || hot.isDestroyed) return;
-      setIsLoading2(true)
-      
+      //setIsLoading2(true)
+      console.log("hola1")
       const invoice = await selectSingleInvoice(invoi);
-      
+      console.log("hola2")
       // Manejo de estados inicial
       setisActive(invoice.state !== "approved");
+      console.log("hola3")
       setButton(invoice.state === "approved" ? false : (invoice.state === "View"? true : false));
-  
+      console.log("hola4")
       // Obtén los datos una sola vez
       const Data = await getSuplierInvoice(1, 200, invoi);
+      console.log("hola5")
       setcopia(Data);
-  
+      console.log("hola6")
       let total = 0;
       let bultos = 0;
       let purchase = "";
@@ -98,32 +100,44 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
       const changes = [];
   
       // Procesar las facturas en paralelo
+      console.log("hola7")
       const billPromises = Data.map(async (datas) => {
+        console.log("hola8")
         if (datas && datas.base_bill_id) {
+          console.log("hola9")
           try {
+            console.log("hola10")
             const bill = await selectSingleBill(datas.base_bill_id);
-            
+            console.log("hola11")
             // Procesar la primera factura y evitar llamadas repetitivas
             if (!purchase) {
+              console.log("hola2")
               purchase = bill[0]?.purchase_order || "";
               const pro = await selectSingleSupplier(bill[0]?.supplier_id);
+              console.log("hola13")
               proveedor = pro?.name || "";
-              
+              console.log("hola14")
               const trmCondition = datas.billed_unit_price !== bill[0]?.unit_price;
+              console.log("hola15")
               updateSharedState('TRM', !trmCondition);
+              console.log("hola16")
               updateSharedState('TRMCOP', trmCondition ? (parseFloat((datas.billed_unit_price/bill[0]?.unit_price).toFixed(10))) : undefined);
+              console.log("hola17")
               setSelectedCurrency(datas.billed_currency)
             }
-
+            console.log("hola18")
             // Actualización de campos
             updateSharedState('nofactura', datas.bill_number);
+            console.log("hola19")
             total += datas.gross_weight || 0;
             bultos += datas.packages || 0;
   
             // Guardar cambios en la tabla
-
+            console.log("hola20")
               changes.push([cont, 0, bill[0].item]);
+              console.log("hola21")
               changes.push([cont, 2, datas.billed_quantity]);
+              console.log("hola22")
 
   
             cont++;
@@ -133,17 +147,24 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
         }
       });
 
-
+      console.log("hola23")
       await Promise.all(billPromises);
+      console.log("hola24")
 
     // Actualización final del estado
+    
     updateSharedState('pesototal', parseFloat(total.toFixed(2)));
+    console.log("hola25")
     updateSharedState('bultos', parseFloat(bultos.toFixed(0)));
+    console.log("hola26")
     updateSharedState('proveedor', proveedor);
+    console.log("hola27")
     setOrderNumber(purchase);
+    console.log("hola28")
 
     // Crear pares y mantener la relación
     const grouped = [];
+    console.log("hola29")
     for (let i = 0; i < changes.length; i += 2) {
         const dominant = changes[i]; // Dominante
         const companion = changes[i + 1]; // Acompañante
@@ -152,8 +173,10 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
             companion: companion
         });
     }
+    console.log("hola30")
 
     // Paso 2: Ordenar los dominantes por su valor
+    console.log("hola31")
     grouped.sort((a, b) => a.dominant[2] - b.dominant[2]);
 
     // Paso 3: Asignar nuevas filas
@@ -166,9 +189,11 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
         result.push(newDominant);
         result.push(newCompanion);
     });
+    console.log("hola32")
 
     // Actualizar la tabla de Handsontable en batch
     if (result.length > 0 && hot && !hot.isDestroyed) {
+      console.log("hola33")
       await new Promise((resolve) => {
           hot.batch(() => {
               hot.setDataAtCell(result);
@@ -182,7 +207,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
               }
           });
       });
-
+      console.log("hola34")
       // Usa el hook `afterLoadData` para confirmar cuando los datos han sido recargados
       await new Promise((resolve) => {
           hot.addHookOnce('afterLoadData', () => {
@@ -190,6 +215,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
               resolve();
           });
       });
+      console.log("hola35")
 
 
 
@@ -197,7 +223,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
         hot.loadData(hot.getSourceData());  // Recarga usando la fuente original de datos
         console.log("Datos recargados forzadamente.");
       }, 200);
-
+      console.log("hola36")
       
   } else {
       console.log("No hay cambios para aplicar o la instancia de Handsontable no está disponible.");
@@ -207,9 +233,11 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
     } finally {
       const hot = hotTableRef.current.hotInstance;
     if (!hot || hot.isDestroyed ) return;
-      setTimeout(() => {
+    console.log("hola37")
+      /*setTimeout(() => {
         setIsLoading2(false)
-      }, 7000);
+      }, 7000);*/
+      console.log("hola38")
 
     }
   };
