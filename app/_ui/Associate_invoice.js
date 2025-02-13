@@ -73,6 +73,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
     let tfactura = 0;
     let Copia = [];
     let cantidad = 0
+    let trmcop = 0
     try {
       const hot = hotTableRef.current.hotInstance;
     if (!hot || hot.isDestroyed) return;
@@ -117,17 +118,18 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
               purchase = bill[0]?.purchase_order || "";
               const pro = await selectSingleSupplier(bill[0]?.supplier_id);
               setrealcurrency(bill[0]?.currency)
-
+              updateSharedState('TRMCOP', (datas.billed_currency !== bill[0]?.currency ? (parseFloat((datas.billed_unit_price/bill[0]?.unit_price).toFixed(10))) : undefined))
+              trmcop = (datas.billed_currency !== bill[0]?.currency ? (parseFloat((datas.billed_unit_price/bill[0]?.unit_price).toFixed(10))) : undefined)
               console.log("hola13")
               proveedor = pro?.name || "";
+              
               console.log("hola14")
               const trmCondition = datas.billed_unit_price !== bill[0]?.unit_price;
-              setSelectedCurrency(datas.billed_currency)
-              alert("hola" + datas.billed_currency)
               updateSharedState('TRM', (datas.billed_currency === "COP" ? false : true));
+              setSelectedCurrency(datas.billed_currency)
               console.log("hola15")
               console.log("hola16")
-              updateSharedState('TRMCOP', (datas.billed_currency !== bill[0]?.currency ? (parseFloat((datas.billed_unit_price/bill[0]?.unit_price).toFixed(10))) : undefined));
+              ;
               console.log("hola17")
               
               
@@ -246,6 +248,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
     if (!hot || hot.isDestroyed ) return;
     console.log("hola37")
       setTimeout(() => {
+        updateSharedState('TRMCOP', trmcop)
         setIsLoading2(false)
       }, ((7 * cantidad)* 1000));
       console.log("hola38")
@@ -1513,7 +1516,12 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
     {(selectedCurrency.trim().toLowerCase() !== realcurrency.trim().toLowerCase() && sharedState.proveedor !== "") && (
       <HStack  ml={iMediumScreen ? 40 : 20}  top={2} height="30px" width="300px" position="absolute">
         <Text fontSize={iMediumScreen ? "50%": "70%"}>TRM Factura</Text>
-        <Input fontSize={iMediumScreen ? "70%": "90%"} onClick={() => updateSharedState("TRMCOP", ) } isDisabled={!isActive} type="number" min="1" step="0.0000000001" value={(isTable !== "Create") ? sharedState.TRMCOP : undefined} onBlur={handleTRMCOP} h="25px" width={iMediumScreen ? "40%" : "190px"} bg="white"></Input>
+        <Tooltip placement="top" label="Introduzca la trm con la que facturo">
+        <Input fontSize={iMediumScreen ? "70%": "90%"} onClick={() => updateSharedState("TRMCOP", ) } className=" placeholder:text-center" placeholder={realcurrency + " --> " + selectedCurrency} isDisabled={!isActive} type="number" min="1" step="0.0000000001" value={(isTable !== "Create") ? sharedState.TRMCOP : undefined} onBlur={handleTRMCOP} h="25px" width={iMediumScreen ? "40%" : "190px"} bg="white"></Input>
+        </Tooltip>
+        <Tooltip fontSize="xs" label={ realcurrency !== "" ? "Factura registrada en " + (realcurrency === "USD" ? "Dolares" : (realcurrency === "EUR" ? "Euros" : "Pesos Colombianos" ) ) + " y se facturara en " + (selectedCurrency === "USD" ? "Dolares" : (selectedCurrency === "EUR" ? "Euros" : "Pesos Colombianos")) : ""}>
+    <InfoOutlineIcon w={3} h={3} color="black" />
+  </Tooltip>
       </HStack>
     )}
   </VStack>

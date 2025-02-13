@@ -363,13 +363,22 @@ return "approved"
     if(status !== ""){
       await updateInvoice({invoice_id: suppliers, state: status, feedback: textValue })
     }
-    
+    if(FMM === ""){
+      setFMM(active.fmm)
+    }
+    if(FMM !== "" && active.fmm !== FMM){
+      await updateInvoice({invoice_id: suppliers, fmm: FMM })
+    }
+
   if(status === "approved" || (status === "" && active.state === "approved")){
     setisapproved(true)
   }else{
     setisapproved(false)
   }
+
+
     try{
+
       const invoice = await getSuplierInvoice(1,200,suppliers);
       const invo = await getInvo(suppliers)
       await Promise.all(

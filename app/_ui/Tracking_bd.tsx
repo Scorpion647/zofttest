@@ -322,7 +322,7 @@ export const Tracking_bd = () => {
                                         PROVEEDOR: supplier.name,
                                         FOB_UNIT: parseFloat(((sup.billed_unit_price / 100) / (sup.billed_currency === "USD" ? 1 : sup.trm)).toFixed(8)),
                                         FACTURA: sup.bill_number,
-                                        FMM: undefined,
+                                        FMM: invo.fmm,
                                         PA: subpartida,
                                         UC: measurement,
                                         TRM: sup.trm,
