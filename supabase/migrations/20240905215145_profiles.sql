@@ -115,8 +115,9 @@ CREATE POLICY "Delete own profile or has permission" ON public.profiles FOR dele
   OR public.role_has_permission ('profiles', B'1000')
 );
 
-CREATE OR REPLACE FUNCTION get_user_role()
-RETURNS VARCHAR AS $$
+
+CREATE
+OR REPLACE function get_user_role () returns VARCHAR AS $$
 DECLARE
     user_role VARCHAR;
 BEGIN
@@ -128,4 +129,4 @@ BEGIN
 
     RETURN user_role;
 END;
-$$ LANGUAGE plpgsql;
+$$ language plpgsql;

@@ -1,0 +1,2 @@
+ALTER TABLE invoice_data
+ADD COLUMN fmm VARCHAR(255) DEFAULT '';
