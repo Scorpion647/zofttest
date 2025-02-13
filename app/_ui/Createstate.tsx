@@ -282,6 +282,7 @@ useEffect(() => {
         invoice.map(async (invo: { invoice_id: any; state: any; }) => {
           try {
             const data = await selectSupplierDataByInvoiceID(invo.invoice_id);
+            if(!data[0].base_bill_id) return null
             try {
               const record = await selectSingleBill(data[0].base_bill_id);
               //console.log('Record:', record);  // Para verificar el resultado

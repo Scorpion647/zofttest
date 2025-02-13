@@ -39,7 +39,7 @@ export async function handleExport(visibleData) {
             const PTTASA_CAMBIO = row[11];
 
             // Asegúrate de que PTPRECIO se calcule correctamente
-            PTPRECIO = (info.billed_currency === "USD" || info.billed_currency === "EUR")
+            PTPRECIO = (info.billed_currency === "USD")
                 ? parseFloat(PTPRECIO)
                 : parseFloat((PTPRECIO / PTTASA_CAMBIO).toFixed(9)); // Cambiar a PTTASA_CAMBIO
 

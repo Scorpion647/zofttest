@@ -420,7 +420,7 @@ const trm = supdata.trm || 1; // Asegúrate de que trm no sea 0 o indefinido
 
 // Optimiza los cálculos
 const totalInLocalCurrency = billedUnitPriceInUSD * quantity;
-const totalInUSD = totalInLocalCurrency / (supdata.billed_currency === "USD" ? 1 :  trm);
+const totalInUSD = (supdata.billed_currency !== "EUR" ? totalInLocalCurrency / (supdata.billed_currency === "USD" ? 1 :  trm) : totalInLocalCurrency /  trm);
 
 // Formatea los resultados
 const data1 = formatMoney(totalInUSD);                  // Precio total en USD
@@ -435,7 +435,7 @@ const data4 = Typematerial(type);
           supdata.billed_quantity, // CANT
           record.measurement_unit, // UND
           sup.name,              // PROVEEDOR
-          parseFloat(parseFloat((supdata.billed_unit_price / 100) / (supdata.billed_currency === "USD" ? 1 :  supdata.trm) ).toFixed(8)), // FOB_UNIT
+          ( supdata.billed_currency === "USD" ? (supdata.billed_unit_price / 100) : supdata.billed_currency === "EUR" ? parseFloat(parseFloat((supdata.billed_unit_price / 100) / supdata.trm ).toFixed(8)) : parseFloat(parseFloat((supdata.billed_unit_price / 100) / supdata.trm ).toFixed(8))) , // FOB_UNIT
           supdata.bill_number,   // FACTURA
           subheading,            // PA
           unidad,                // UC
@@ -633,7 +633,18 @@ const data4 = Typematerial(type);
  }
 
  const change = async (e) => {
-  setStatus(e)
+  if(e === "approved"){
+    if(isTableValid === true && FMM !== ""){
+      setStatus(e)
+    }else{
+      alert(`La factura no cumple con lo siguiente:
+        ${!isTableValid ? "- Materiales con datos incompletos o sin nacionalizar" : ""}
+        ${ FMM === "" ? "- llenar el campo FMM" : ""}
+        `);
+    }
+  }else{
+    setStatus(e)
+  }
  }
 
 
@@ -700,9 +711,11 @@ const { isOpen: isOpen5, onOpen: onOpen5, onClose: onClose5 } = useDisclosure();
     }, 500);
   };
 
+const [FMM,setFMM] = useState("")
 
-
- 
+const handleChangeFMM = useCallback((e) => {
+  setFMM(e.target.value);
+}, []);
 
   return (
     <div className={` w-full h-full`}>
@@ -729,7 +742,7 @@ const { isOpen: isOpen5, onOpen: onOpen5, onClose: onClose5 } = useDisclosure();
                     >
                       <Box position="absolute" right={2}>
                         <Tooltip label={isTableValid ? "": "Hay datos invalidos"}>
-                        <Button isDisabled={!isapproved || !isTableValid} onClick={() => handleExportar()} bgColor="#F1D803" textColor="black"  >
+                        <Button isDisabled={!isTableValid} onClick={() => handleExportar()} bgColor="#F1D803" textColor="black"  >
                           Export
                         </Button>
                         </Tooltip>
@@ -760,11 +773,16 @@ const { isOpen: isOpen5, onOpen: onOpen5, onClose: onClose5 } = useDisclosure();
                          <EditIcon/> 
                         </Button>
                         </Tooltip>
+                        
                         </HStack>
   
                       </Box>
                       <Box flex={1} textAlign="center">
-                      
+                      {(isTableValid && status !== "rejected") && (
+                        <Tooltip label="FMM de factura">
+                          <Input value={FMM} onChange={handleChangeFMM} background="white"  width="40%" placeholder='FMM'/>
+                        </Tooltip>
+                      )}
                       </Box>
   
                     </Flex>

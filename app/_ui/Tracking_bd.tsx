@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { HotTable } from '@handsontable/react';
 import 'handsontable/dist/handsontable.full.css';
-import { VStack, HStack, Spinner, Text, Button, Input, Box, Flex, Select, Tooltip, useToast, Checkbox } from '@chakra-ui/react';
+import { VStack, HStack, Spinner, Text, Button, Input, Box, Flex, Select, Tooltip, useToast, Checkbox, Modal, ModalOverlay, ModalContent, ModalHeader, ModalCloseButton, ModalBody, ModalFooter, useDisclosure } from '@chakra-ui/react';
 import { getMaterial, getRecords, getRecordsInfo, getSupplier } from '@/app/_lib/database/service';
 import { ArrowBackIcon, ArrowForwardIcon, SearchIcon } from '@chakra-ui/icons';
 import { selectInvoice_data, selectInvoiceBySupplier } from '../_lib/database/invoice_data';
@@ -38,6 +38,9 @@ export const Tracking_bd = () => {
     const [InputValue, setInputValue] = useState("")
     const [savedata, setsavedata] = useState<MiObjeto | undefined>()
     const hotTableRef = useRef(null);
+    const { isOpen, onOpen, onClose } = useDisclosure();
+    const [error, setError] = useState("");
+    const [isLoading1, setIsLoading1] = useState(false);
 
     const toast = useToast();
 
@@ -134,7 +137,14 @@ export const Tracking_bd = () => {
         FetchData()
     },[])
 
+
+
+
     const Supp_Export = async () => {
+
+    setIsLoading1(true);
+    setError("");
+    onOpen();
 
         let data: MiObjeto = { page: 1, limit: 8, equals: { state: "approved" }, orderBy: { column: "updated_at", options: { ascending: true } } };
         if (InputValue !== "") {
@@ -166,6 +176,7 @@ export const Tracking_bd = () => {
                 console.log("No se encontró ningún proveedor similar.");
               }
             } catch (error) {
+            setError('Error al generar el archivo de seguimiento.');
               console.error("Error al procesar el proveedor:", error);
             }
         }
@@ -354,7 +365,11 @@ export const Tracking_bd = () => {
                 setsavedata(undefined);
             }
         } catch (error) {
+            setError('Error al generar el archivo de seguimiento.');
             console.error('Error al obtener los datos de las facturas:', error);
+        }finally{
+            setIsLoading1(false);
+            onClose();
         }
     };
 
@@ -792,6 +807,22 @@ export const Tracking_bd = () => {
                             </Button>
                         </HStack>
                     </Box>
+
+                    <Modal isOpen={isOpen} onClose={onClose}>
+                                          <ModalContent>
+                                            <ModalHeader>Exportando Archivo de seguimiento</ModalHeader>
+                                            <ModalCloseButton />
+                                            <ModalBody>
+                                              {isLoading1 ? 'Generando archivo...' : 'Archivo generado exitosamente.'}
+                                              {error !== "" && <p className="text-red-500">{error}</p>}
+                                            </ModalBody>
+                                            <ModalFooter>
+                                              <Button colorScheme="blue" mr={3} onClick={onClose}>
+                                                Cerrar
+                                              </Button>
+                                            </ModalFooter>
+                                          </ModalContent>
+                                        </Modal>
 
                 </>
             )}
