@@ -388,7 +388,7 @@ export const Tracking_bd = () => {
 
     const FetchData = async () => {
         setIsLoading(true)
-        let data: MiObjeto = { page: 1, limit: 8, equals: {state: "approved"}, orderBy: { column: "updated_at", options: { ascending: true } } }
+        let data: MiObjeto = { page: 1, limit: 1000, equals: {state: "approved"}, orderBy: { column: "updated_at", options: { ascending: true } } }
         if (InputValue !== "") {
             try {
               // Espera a que se resuelva la búsqueda del proveedor más cercano
@@ -708,7 +708,7 @@ export const Tracking_bd = () => {
                             <VStack width="100%">
 
                             </VStack>
-                            {data.map((item) => (
+                            {data.slice(0,7).map((item) => (
                                 <VStack position="relative"  w="100%" key={item.orden}>
                                     {Checkboxs && (
                                         <Checkbox
@@ -787,6 +787,7 @@ export const Tracking_bd = () => {
                         </VStack>
                         <HStack marginTop="10px" width="100%" height="6%" bg="gray.200" justify="center">
                             <Button
+                            isDisabled={true}
                                 width="1%"
                                 height="60%"
                                 bg="#F1D803"
@@ -797,6 +798,7 @@ export const Tracking_bd = () => {
                             </Button>
                             <Text>1</Text>
                             <Button
+                                isDisabled={true}
                                 width="1%"
                                 height="60%"
                                 bg="#F1D803"

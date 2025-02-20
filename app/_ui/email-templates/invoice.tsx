@@ -10,6 +10,7 @@ export interface EmailTemplateProps {
   reason?: string;
   body?: string;
   header: string;
+  fmm?: string;
 }
 
 export const EmailTemplate: React.FC<Readonly<EmailTemplateProps>> = (
@@ -41,6 +42,11 @@ export const EmailTemplate: React.FC<Readonly<EmailTemplateProps>> = (
       <li>
         <b>Orden de compra:</b> <span>{params.purchase_order}</span>
       </li>
+      {params.fmm && 
+        <li>
+          <b>FMM:</b> <span>{params.fmm}</span>
+        </li>
+      }
     </ul>
 
     {params.body && <div>

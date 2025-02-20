@@ -331,13 +331,14 @@ return "approved"
 
   };
 
-  const sendEmail = async (invoice, header, razon) => {
+  const sendEmail = async (invoice, header, razon,fmm) => {
     const data = {
       invoice_id: invoice,
       type: "Actualizacion",
       header: header,
       body: razon,
-      subject: ("Actualizacion de solicitud: " + invoice)
+      subject: ("Actualizacion de solicitud: " + invoice),
+      fmm: fmm
     };
 
     const res = await fetch("/api/mail/supplier-data", {
@@ -474,9 +475,12 @@ const data4 = Typematerial(type);
       //alert(active.state + "     " + origin + "     " + status + "       " + numbeer)
       if(active.state !== origin || active.state !== status){
         if(numbeer > 0){
-          sendEmail(suppliers,("El estado de su asociacion a sido cambiado por : "+(status === "approved" ? "Aprobado" : (status === "pending" ? "Pendiente" : "Rechazado") )),(status === "rejected" ? textValue : undefined))
+          sendEmail(suppliers,("El estado de su asociacion a sido cambiado por : "+(status === "approved" ? "Aprobado" : (status === "pending" ? "Pendiente" : "Rechazado") )),(status === "rejected" ? textValue : undefined),(status === "approved" ?  FMM : undefined))
           if(status !== "rejected" && (active.feedback !== "" && active.feedback !== null)){
             await updateInvoice({invoice_id: suppliers, feedback: "" })
+          }
+          if(status !== "approved" && (FMM !== "" && active.fmm !== FMM)){
+            await updateInvoice({invoice_id: suppliers, fmm: "" })
           }
           setTextValue("")
         }
@@ -789,7 +793,7 @@ const handleChangeFMM = useCallback((e) => {
                       <Box flex={1} textAlign="center">
                       {(isTableValid && status !== "rejected") && (
                         <Tooltip label="FMM de factura">
-                          <Input value={FMM} onChange={handleChangeFMM} background="white"  width="40%" placeholder='FMM'/>
+                          <Input isDisabled={status === "approved"} value={FMM} onChange={handleChangeFMM} background="white"  width="40%" placeholder='FMM'/>
                         </Tooltip>
                       )}
                       </Box>

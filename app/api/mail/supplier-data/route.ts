@@ -79,6 +79,7 @@ export async function POST(request: Request) {
       type: data.type,
       body: data.body ?? undefined,
       reason: data.reason ?? undefined,
+      fmm: data.fmm ?? undefined,
     }),
   });
 
