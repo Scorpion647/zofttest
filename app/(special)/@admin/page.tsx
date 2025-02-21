@@ -598,13 +598,13 @@ export default function Admin() {
                   !isDatos &&
                   !isTracking && (
                     <>
-                    
+
                        
                           <VStack justify="center" align="center" width="100%" height="100%">
                             <Text className=" font-bold" textColor="gray.500" fontSize="200%">ZOFT</Text>
                             <Image
-                            src="/iconogris.png" 
-                            alt="IconGray"
+                            src="/iconogriss.png" 
+                            alt="icongray"
                             w="150px"
                             h="150px"
                             />
