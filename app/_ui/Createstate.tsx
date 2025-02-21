@@ -520,7 +520,7 @@ useEffect(() => {
                   height="60%"
                   bg="#F1D803"
                   onClick={() => previouspages()}
-                  disabled={!previouspage || currentPage === 1}
+                  isDisabled={!previouspage || currentPage === 1}
                   colorScheme="teal"
                 >
                   <ArrowBackIcon width={4} height={4} color="black" />
@@ -531,7 +531,7 @@ useEffect(() => {
                   height="60%"
                   bg="#F1D803"
                   onClick={() => nextpages()}
-                  disabled={!nextpage}
+                  isDisabled={!nextpage}
                   colorScheme="teal"
                 >
                   <ArrowForwardIcon width={4} height={4} color="black" />

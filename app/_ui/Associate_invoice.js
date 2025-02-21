@@ -16,6 +16,7 @@ import { selectSingleSupplierEmployee } from "../_lib/database/supplier_employee
 import { getData } from "../_lib/database/app_data";
 import { selectBills, selectByPurchaseOrder, selectSingleBill } from "../_lib/database/base_bills";
 import { selectSingleInvoice, updateInvoice } from "../_lib/database/invoice_data";
+import { match } from "assert";
 
 
 
@@ -790,7 +791,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
     if (!hotInstance) return console.error('No hay instancia de Handsontable disponible.');
   
     // Validaciones necesarias
-    if (!sharedState.pesototal || !sharedState.bultos || !sharedState.nofactura || (!sharedState.TRM && (!sharedState.TRMCOP || sharedState.TRMCOP <= 0))) {
+    if (!sharedState.pesototal || !sharedState.bultos || !sharedState.nofactura || (realcurrency !== selectedCurrency && (!sharedState.TRMCOP || sharedState.TRMCOP <= 0))) {
       window.alert('Error, debe llenar todos los campos requeridos.');
       return;
     }
@@ -851,12 +852,19 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
           }
         }
   
-        const factunitprice = parseFloat(String(hotInstance.getDataAtCell(index, 3)).replace(/[$,]/g, ''));
-        const totalprice = (factunitprice * parseFloat(hotInstance.getDataAtCell(index, 2))).toFixed(2);
+
+
+
+
+
+
+
+        const factunitprice = (currency === selectedCurrency ? unit : parseFloat(String(hotInstance.getDataAtCell(index, 3)).replace(/[$,]/g, '')));
+        const totalprice = (currency === selectedCurrency ? total : (factunitprice * parseFloat(hotInstance.getDataAtCell(index, 2))).toFixed(2));
         const gross = ((((hotInstance.getDataAtCell(index, 2) / sharedState.columnSum) * sharedState.pesototal))).toFixed(9);
         const packag = ((((hotInstance.getDataAtCell(index, 2) / sharedState.columnSum) * sharedState.bultos))).toFixed(9);
-        let conver = 0;
-        let trm = 0;
+        let conver = 0
+        let trm = 0
   
         if (sharedState.TRM) {
           trm = selectedCurrency === "USD" ? await getExchangeRate("trm_usd") : await getExchangeRate("trm_eur");
@@ -889,8 +897,8 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
             bill_number: String(sharedState.nofactura),
             trm: parseFloat(trm),
             billed_quantity: parseInt(billed_quantity),
-            billed_unit_price: parseInt(factunitprice * 100),
-            billed_total_price: parseInt(totalprice * 100),
+            billed_unit_price: Math.round(factunitprice * 100),
+            billed_total_price: Math.round(totalprice * 100),
             gross_weight: parseFloat(gross),
             packages: parseFloat(packag),
             billed_currency: conver,
@@ -906,8 +914,8 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
                 supplier_data_id: objeto.supplier_data_id,
                 trm: parseFloat(trm),
                 billed_quantity: parseInt(billed_quantity),
-                billed_unit_price: parseInt(factunitprice * 100),
-                billed_total_price: parseInt(totalprice * 100),
+                billed_unit_price: Math.round(factunitprice * 100),
+                billed_total_price: Math.round(totalprice * 100),
                 gross_weight: parseFloat(gross),
                 packages: parseFloat(packag),
                 billed_currency: conver,
@@ -1173,7 +1181,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
       return;
     }
   
-    if (!sharedState.pesototal || !sharedState.bultos || !sharedState.nofactura || (!sharedState.TRM && (!sharedState.TRMCOP || sharedState.TRMCOP <= 0))) {
+    if (!sharedState.pesototal || !sharedState.bultos || !sharedState.nofactura || (realcurrency !== selectedCurrency && (!sharedState.TRMCOP || sharedState.TRMCOP <= 0))) {
       window.alert('Error, debe llenar todos los campos requeridos.');
       return;
     }
@@ -1279,7 +1287,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
             base_bill_id: base_bill_id,
             bill_number: String(sharedState.nofactura),
             trm: parseFloat(trm),
-            billed_quantity: parseInt(billed_quantity),
+            billed_quantity: parseFloat(billed_quantity),
             billed_unit_price: Math.round(factunitprice * 100),
             billed_total_price: Math.round(totalprice * 100),
             gross_weight: parseFloat(gross),
@@ -1339,7 +1347,11 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
       if (error.details) {
         console.error('Detalles del error:', error.details);
       }
-      alert('Error al enviar los registros.');
+      alert('Error al enviar los registros.  ');
+      alert(error.message)
+      alert(error.details)
+
+      setIsLoading2(false)
     }
     
   };
