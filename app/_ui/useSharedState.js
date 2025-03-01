@@ -31,6 +31,8 @@ export function useSharedState() {
     bultostotal: 0,
     totalfacturas: 0,
     ButtonDisabled: false,
+    totalOC: 0,
+    OCusada: 0,
 
 
   });

@@ -303,7 +303,7 @@ return "approved"
     const { row, col } = coords;
     const cellContent = td.innerText;
 
-    if (cellContent === 'INVALIDO' && col === 15) {
+    if ((cellContent === 'INVALIDO' && col === 15) || ((cellContent === '' || cellContent === undefined || cellContent === null) && col === 10)) {
 
       let subp = 0
       let code = ""
@@ -912,7 +912,8 @@ const handleChangeFMM = useCallback((e) => {
                         afterOnCellMouseDown={handleCellClick}
                         beforeContextMenuShow={(instance, menu, coords) => {
                           const { row, col } = coords
-                          const cellData = instance.getDataAtCell(row, 15); 
+                          const cellData = instance.getDataAtCell(row, 15);
+                          const cellData2 = instance.getDataAtCell(row, 10); 
                           console.log(cellData)
                           if (cellData === 'INVALIDO') {
                             

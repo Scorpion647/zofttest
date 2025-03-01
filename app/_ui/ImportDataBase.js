@@ -97,7 +97,7 @@ export const ImportDataBase = ({ sharedState, updateSharedState}) => {
   const [iSmallScreen] = useMediaQuery("(max-width: 768px)");
   const [iMediumScreen] = useMediaQuery("(min-width: 768px) and (max-width: 1024px)");
   const [iLargeScreen] = useMediaQuery("(min-width: 1024px)");
-
+  const CountGlobal = useRef(0);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -735,6 +735,25 @@ export const ImportDataBase = ({ sharedState, updateSharedState}) => {
     cancelarRef.current = Cancelar; 
   }, [Cancelar]);
   const validateAndInsertData = async () => {
+    CountGlobal.current = 0;
+    let invalidbills = []
+    /*const filteredData = data.filter(row => {
+      const [purchase_order, position, material_code, description, quantity, measurement_unit, unit_price, net_price, supplier_name, currency] = row;
+    
+      if (!purchase_order || !position) {
+        return false; // Se eliminan los registros sin purchase_order o position
+      }
+    
+      if (!material_code || !description || !quantity || !measurement_unit || !unit_price || !net_price || !supplier_name || !currency) {
+        invalidbills.push({ purchase_order, item: position }); // Se agregan a invalidbills
+        return false;
+      }
+    
+      return true; // Se mantienen los registros válidos
+    });*/
+    
+    // Actualizamos el estado con los datos filtrados
+    
     setIsProcessing(true);
     updateSharedState("ButtonDisabled", true)
     setProgress(0)
@@ -745,34 +764,43 @@ export const ImportDataBase = ({ sharedState, updateSharedState}) => {
     let existingMaterials = [];
     let existingSuppliers = [];
     let invalidmaterials = []
-    let invalidbills = []
+    
     let invalidsuppliers = []
     let cont1 = 0;
     let cont2 = 0;
 
+
+    
     try {
       switch (selectedTable) {
         case 'Registros':
-          existingRecords = await getRecords(1, 30000);
+          existingRecords = await getRecords(1, 100000);
           break;
         case 'Materiales':
-          existingMaterials = await getMaterials(1, 40000);
+          existingMaterials = await getMaterials(1, 100000);
           break;
         case 'Proveedores':
-          existingSuppliers = await getSuppliers(1, 1000);
+          existingSuppliers = await getSuppliers(1, 10000);
           break;
       }
     } catch (error) {
       console.error('Error fetching existing data:', error);
     }
-
+    
+    const materialsMap = new Map(
+  existingMaterials.map(material => {
+    const normalized = String(material.material_code).trim().toLowerCase();
+    return [normalized, material];
+  })
+);
+    
     const invalidMaterialEntries = [];
     const invalidSupplierEntries = [];
     const recordsToInsert = [];
     const materialsToInsert = [];
     const suppliersToInsert = [];
 
-    for (const row of data) {
+    for (const row of  data) {
       const args = {};
       if (cancelarRef.current) { 
         const userConfirmed = window.confirm('¿Estás seguro que quieres cancelar el proceso?');
@@ -808,37 +836,19 @@ export const ImportDataBase = ({ sharedState, updateSharedState}) => {
         ] = row;
 
 
-        if (
-          !purchase_order ||
-          !position ||
-          !material_code ||
-          !description ||
-          !quantity ||
-          !measurement_unit ||
-          !unit_price ||
-          !net_price ||
-          !supplier_name ||
-          !currency
-        ) {
-          invalidbills.push({
-            purchase_order: purchase_order,
-            item: position
-          })
-          completedTasks += 1;
-          continue
-        }
-
+        cont2 = cont2 + 1;
+        console.log("registro numero: ",cont2)
         const existingRecord = existingRecords.find(record => record.purchase_order === purchase_order && record.item === position);
         let supplierId;
 
         if (!existingRecord) {
-          const domainExists = await getSupplier("", "", supplier_name);
-          if (domainExists.name !== supplier_name) {
+          const domainExists = await selectSuppliers({page: 1, limit: 1, equals: {name: supplier_name}});
+          if (domainExists[0]?.name !== supplier_name) {
             const newSupplier = await insertSupplier({ name: supplier_name });
             const domain = await getSupplier("", "", supplier_name);
             supplierId = domain.supplier_id;
           } else {
-            supplierId = domainExists.supplier_id;
+            supplierId = domainExists[0]?.supplier_id;
           }
           
           const unitPriceParsed = parseFloat((parseFloat(parseFloat(normalizeNumber(String(unit_price)))).toFixed(2) * 100).toFixed(0));
@@ -872,31 +882,41 @@ export const ImportDataBase = ({ sharedState, updateSharedState}) => {
         }
       } else if (selectedTable === "Materiales") {
 
-       
+
         const [material_code, subheading, type, measurement_unit] = row;
-        if(!material_code){
-          invalidmaterials.push({
-            material_code: "VACIO",
-            subheading: subheading,
-            types: (type  ? String(type) : "VACIO"),
-            measurement_unit: (measurement_unit ? measurement_unit : "VACIO")
-          })
-          completedTasks += 1;
-          continue;
-        }
-
-        const normalizedMaterialCode = String(material_code).trim().toLowerCase();
-
-const existingmaterial = materialsToInsert.find(
-  record => String(record.material_code).trim().toLowerCase() === normalizedMaterialCode
-);
 
 
-if (existingmaterial) {
-  cont1 = cont1 + 1;
+        
+console.log('Row:', row);
+console.log('material_code:', material_code);
+
+if (!material_code) {
+  invalidmaterials.push({
+    material_code: "VACIO",
+    subheading: subheading,
+    types: (type ? String(type) : "VACIO"),
+    measurement_unit: (measurement_unit ? measurement_unit : "VACIO")
+  });
+  CountGlobal.current = CountGlobal.current + 1;
   completedTasks += 1;
   continue;
 }
+
+        const normalizedMaterialCode = String(material_code).trim().toLowerCase();
+
+        if (materialsToInsert.some(material => 
+          String(material.material_code).trim().toLowerCase() === normalizedMaterialCode)) {
+            CountGlobal.current = CountGlobal.current + 1;
+    completedTasks++;
+      continue; // Si ya existe, salta esta iteración
+    }
+
+
+if (materialsMap.has(normalizedMaterialCode)) {
+    CountGlobal.current = CountGlobal.current + 1;
+    completedTasks++;
+    continue;
+  }
 
         const materialArgs = { material_code: material_code };
 
@@ -932,9 +952,9 @@ if (existingmaterial) {
 
         if (measurement_unit) materialArgs.measurement_unit = measurement_unit;
 
-        const revisar = await getMaterial(material_code)
-        if (revisar.material_code === material_code) {
-          const updateNeeded = revisar.type !== materialArgs.type || revisar.measurement_unit !== materialArgs.measurement_unit;
+        const revisar = await selectMaterials({page: 1, limit: 1, equals: {material_code: material_code}})
+        if (revisar[0]?.material_code === material_code) {
+          const updateNeeded = revisar[0]?.type !== materialArgs.type || revisar[0]?.measurement_unit !== materialArgs.measurement_unit;
           if (updateNeeded) {
             //poner que suscede al actualizar
           }
@@ -942,6 +962,7 @@ if (existingmaterial) {
         } else {
           materialsToInsert.push(materialArgs);
         }
+        CountGlobal.current = CountGlobal.current + 1;
         completedTasks += 1;
 
 
@@ -961,6 +982,7 @@ if (existingmaterial) {
         const exist = await getSupplier("","",name)
         if(exist.name !== undefined){
           //si se reptite
+          
           completedTasks += 1;
           continue
         }
@@ -1212,6 +1234,26 @@ const vamosaver = () => {
   console.log("Detectamos cambio")
   setCancelar(true)
 }
+
+const textRef = useRef(null);
+
+  useEffect(() => {
+    let animationFrame;
+    const updateText = () => {
+      if (textRef.current) {
+        textRef.current.innerText = `${CountGlobal.current}/${data.length}`;
+      }
+      // Programa la siguiente actualización
+      animationFrame = requestAnimationFrame(updateText);
+    };
+
+    // Inicia la actualización
+    updateText();
+
+    // Limpia al desmontar
+    return () => cancelAnimationFrame(animationFrame);
+  }, [CountGlobal]);
+
  
   return (
     <>
@@ -1471,8 +1513,20 @@ const vamosaver = () => {
       
         {isProcessing && (
           <>
-          <HStack paddingRight={1} paddingLeft={1} bg="gray.300" height="5" width="69%" mt={2.5}>
+          <HStack position="relative" paddingRight={1} paddingLeft={1} bg="gray.300" height="5" width="69%" mt={2.5}>
         <Progress value={progress} colorScheme='blue' width="100%" size="lg" />
+        <Text
+        ref={textRef}
+    position="absolute"
+    left="50%"
+    top="50%"
+    transform="translate(-50%, -50%)"
+    zIndex={1}
+    fontSize="sm"
+    color="black"
+  >
+    {CountGlobal.current}/{data.length}
+  </Text>
         </HStack>
         <HStack width="1%">
 

@@ -626,7 +626,7 @@ export default function Admin() {
                 <ModalHeader>Actualizar TRM</ModalHeader>
                 <ModalBody>
                   <FormControl>
-                    <FormLabel>TRM USD (dolares)</FormLabel>
+                    <FormLabel>TRM USD (dolares)  <Text as="span" fontWeight="bold">USD → COP</Text></FormLabel>
                     <Input
                       type="number"
                       value={InputUSD}
@@ -634,7 +634,7 @@ export default function Admin() {
                     />
                   </FormControl>
                   <FormControl>
-                    <FormLabel>TRM EUR (euros)</FormLabel>
+                    <FormLabel>TRM EUR (euros)   <Text as="span" fontWeight="bold">USD → EUR</Text></FormLabel>
                     <Input
                       type="number"
                       value={InputEUR}
