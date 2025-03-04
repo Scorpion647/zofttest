@@ -144,7 +144,7 @@ ADD COLUMN approved_date TIMESTAMP DEFAULT NULL;
 CREATE
 OR REPLACE function set_invoice_approved_date () returns trigger AS $$
 BEGIN
-  IF NEW.state = 'approved' THEN
+  IF NEW.state = 'approved' AND OLD.state<>'approved' THEN
     NEW.approved_date = NOW();
   END IF;
   RETURN NEW; END; $$ language plpgsql;
@@ -159,8 +159,9 @@ EXECUTE function set_invoice_approved_date ();
 CREATE
 OR REPLACE function update_invoice_state_after_doc_change () returns trigger AS $$
 BEGIN
-  update invoice_data set "state" = 'pending' where invoice_id = NEW.invoice_id;
-  RETURN NEW;
+  UPDATE invoice_data 
+  SET state = 'pending', approved_date = NULL 
+  WHERE invoice_id = NEW.invoice_id;  RETURN NEW;
 END;
 $$ language plpgsql;
 
@@ -170,3 +171,20 @@ AFTER
 UPDATE
 OR insert ON invoice_docs FOR each ROW
 EXECUTE function update_invoice_state_after_doc_change ();
+
+
+CREATE
+OR REPLACE function delete_old_invoice_docs () returns TABLE (file_url TEXT) AS $$
+BEGIN
+  RETURN QUERY
+    DELETE FROM invoice_docs doc
+    WHERE doc.invoice_id IN (
+        SELECT d.invoice_id 
+        FROM invoice_data d
+        WHERE d.state = 'approved' 
+          AND d.approved_date IS NOT NULL 
+          AND d.approved_date < NOW() - INTERVAL '7 days'
+    )
+    RETURNING doc.file_url;
+END;
+$$ language plpgsql security definer;
