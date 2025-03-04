@@ -4,7 +4,7 @@ import { copycat } from "@snaplet/copycat";
 import { createClient } from "@supabase/supabase-js";
 
 async function main() {
-  const seed = await createSeedClient({ dryRun: false });
+  const seed = await createSeedClient();
   await seed.$resetDatabase();
 
   const supabase = createClient<Database>(
