@@ -1,7 +1,6 @@
-CREATE TABLE invoice_docs (
+CREATE TABLE public.invoice_docs (
   doc_id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
   invoice_id UUID NOT NULL REFERENCES public.invoice_data (invoice_id) ON DELETE cascade,
-  file_url TEXT NOT NULL,
   uploaded_at TIMESTAMP DEFAULT NOW()
 );
 

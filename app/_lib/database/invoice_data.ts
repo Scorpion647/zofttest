@@ -13,7 +13,7 @@ export async function selectSingleInvoice(
 ) {
   const { data, error } = await supabase
     .from("invoice_data")
-    .select("*")
+    .select("*, invoice_docs(*)")
     .eq("invoice_id", invoice_id)
     .single();
 
@@ -27,7 +27,7 @@ export async function selectInvoiceBySupplier(
 ) {
   const { data, error } = await supabase
     .from("invoice_data")
-    .select()
+    .select("*, invoice_docs(*)")
     .eq("supplier_id", supplierID);
 
   if (error) throw error;
@@ -38,7 +38,7 @@ export async function selectInvoiceBySupplier(
 export async function selectInvoice_data(
   params: Prettify<Omit<MultiSelectQuery<Tables<"invoice_data">>, "search">>,
 ) {
-  let query = supabase.from("invoice_data").select("*");
+  let query = supabase.from("invoice_data").select("*, invoice_docs(*)");
 
   if (params.equals) {
     const keys = Object.keys(params.equals) as Array<
@@ -78,20 +78,85 @@ export async function selectInvoice_data(
 }
 
 export async function insertInvoice(
-  invoice: Writable<Arrayable<TablesInsert<"invoice_data">>>,
+  invoice: TablesInsert<"invoice_data">,
+  files: FileList,
 ) {
-  const invoiceList = invoice instanceof Array ? invoice : [invoice];
-
-  const { data, error } = await supabase
+  const { data: invoiceData, error } = await supabase
     .from("invoice_data")
-    .insert(invoiceList)
-    .select()
-    .returns<Tables<"invoice_data">[]>();
+    .insert(invoice)
+    .select();
 
   if (error) {
     throw error;
   }
-  return data;
+
+  if (!files) {
+    return invoiceData;
+  }
+
+  const { invoice_id, supplier_id } = invoiceData[0];
+
+  return await insertInvoiceDoc(supplier_id, invoice_id, files);
+}
+
+export async function insertInvoiceDoc(
+  supplier_id: Tables<"suppliers">["supplier_id"],
+  invoice_id: Tables<"invoice_data">["invoice_id"],
+  files: FileList,
+  upsert: boolean = false,
+) {
+  const storageErrors: Error[] = [];
+
+  Array.from(files).map(async (file) => {
+    if (file.type !== "application/pdf") {
+      storageErrors.push(Error("The selected file is not a pdf"));
+      return;
+    }
+
+    const { data: docsData, error: tableError } = await supabase
+      .from("invoice_docs")
+      .insert({
+        invoice_id,
+      })
+      .returns<Tables<"invoice_docs">[]>();
+
+    if (tableError) {
+      storageErrors.push(Error(tableError.message));
+      return;
+    }
+
+    const { error: storageError } = await supabase.storage
+      .from("invoices")
+      .upload(`${supplier_id}/${invoice_id}/${docsData[0].doc_id}`, file, {
+        contentType: "application/pdf",
+        upsert,
+      });
+    if (storageError) storageErrors.push(storageError);
+  });
+
+  return storageErrors.length > 0 ? storageErrors : undefined;
+}
+
+export async function deleteInvoiceDoc(
+  document: Tables<"invoice_docs">,
+  supplier_id: Tables<"suppliers">["supplier_id"],
+  all: boolean = false,
+) {
+  const { doc_id, invoice_id } = document;
+
+  const { error: storageE } = await supabase.storage
+    .from("invoices")
+    .remove([`${supplier_id}/${invoice_id}/${all ? "" : doc_id}`]);
+
+  if (storageE) {
+    throw storageE;
+  }
+
+  const { error } = await supabase
+    .from("invoice_docs")
+    .delete()
+    .eq("doc_id", doc_id);
+  if (error) throw error;
 }
 
 export async function updateInvoice(
