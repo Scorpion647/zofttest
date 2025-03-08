@@ -23,9 +23,10 @@ import { FaCloudArrowUp } from "react-icons/fa6";
 import { getMaterial, getRecords, getMaterials, getSuppliers, getSupplier, getRecord } from '@/app/_lib/database/service';
 import { AddIcon, CloseIcon, EditIcon } from '@chakra-ui/icons';
 import { insertBills, selectBills } from '../_lib/database/base_bills';
-import { insertMaterial, selectMaterials, selectSingleMaterial, updateMaterial } from '../_lib/database/materials';
+import { deleteMaterial, insertMaterial, selectMaterials, selectSingleMaterial, updateMaterial } from '../_lib/database/materials';
 import { insertSupplier, selectSingleSupplier, selectSuppliers } from '../_lib/database/suppliers';
 import { FaWpforms } from "react-icons/fa6";
+import {Modals} from "@/app/_ui/components/ModalsImport"
 
 
 
@@ -128,120 +129,7 @@ export const ImportDataBase = ({ sharedState, updateSharedState}) => {
   };
 
 
-  useEffect(() => {
-    if (isOpen2) {
-      // Restablecer los campos del formulario cuando se abra el modal
-      setFormDataa({
-        input1: '',
-        input2: '',
-        select2: '',
-        input3: '',
-      });
-      setOriginalData({});
-    }
-  }, [isOpen2]);
-  const handleChangee = (e) => {
-    setFormDataa({
-      ...formDataa,
-      [e.target.name]: e.target.value,
-    });
-  };
-
-  const [formDataa, setFormDataa] = useState({
-    input1: '',
-    input2: '',
-    select2: '',
-    input3: '',
-  });
-
-
-  const fetchMaterialData = async () => {
-    try {
-      // Simulación de búsqueda de datos con el primer input (Código de Material)
-      const data = await selectSingleMaterial(formDataa.input1); // Implementa esta función para traer los datos
-      if (data) {
-        setOriginalData(data);
-        setFormDataa({
-          input1: data.material_code,
-          input2: data.subheading,
-          select2: data.type,
-          input3: data.measurement_unit,
-        });
-      } else {
-        toast({
-          title: 'Error',
-          description: 'No se encontraron datos para este código de material',
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-        });
-      }
-    } catch (error) {
-      console.error("Error fetching data", error);
-    }
-  };
-
-  const handleSubmitt = async () => {
-    // Validación
-    if (!formDataa.input1 || !formDataa.input2 || !formDataa.select2 || !formDataa.input3) {
-      return toast({
-        title: 'Error',
-        description: 'Todos los campos deben estar completos.',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
-    }
-
-    if (formDataa.input2.length !== 10) {
-      return toast({
-        title: 'Error',
-        description: 'La subpartida debe tener exactamente 10 caracteres.',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
-    }
-
-    // Compara datos originales y actualizados
-    const updatedData = {};
-
-    // Solo agrega los campos que hayan cambiado
-    if (formDataa.select2 !== originalData.type) {
-      updatedData.type = formDataa.select2;
-    }
-    if (formDataa.input2 !== originalData.subheading) {
-      updatedData.subheading = formDataa.input2;
-    }
-    if (formDataa.input3 !== originalData.measurement_unit) {
-      updatedData.measurement_unit = formDataa.input3;
-    }
-
-    try {
-      const response = await updateMaterial({target: formDataa.input1, data: updatedData}); // Implementa esta función
-      if (!response) {
-        toast({
-          title: 'Éxito',
-          description: 'Datos actualizados correctamente.',
-          status: 'success',
-          duration: 5000,
-          isClosable: true,
-        });
-        onClose2();
-        fetchData()
-      } else {
-        toast({
-          title: 'Error',
-          description: 'Hubo un problema al actualizar los datos.',
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-        });
-      }
-    } catch (error) {
-      console.error("Error updating data", error);
-    }
-  };
+ 
 
 
 
@@ -787,6 +675,15 @@ export const ImportDataBase = ({ sharedState, updateSharedState}) => {
       console.error('Error fetching existing data:', error);
     }
     
+// Lista para registros duplicados
+const duplicateRecords = []; 
+    const invalidMaterialEntries = [];
+    const invalidSupplierEntries = [];
+    const recordsToInsert = [];
+    const materialsToInsert = [];
+    const suppliersToInsert = [];
+
+
     const materialsMap = new Map(
   existingMaterials.map(material => {
     const normalized = String(material.material_code).trim().toLowerCase();
@@ -794,11 +691,20 @@ export const ImportDataBase = ({ sharedState, updateSharedState}) => {
   })
 );
     
-    const invalidMaterialEntries = [];
-    const invalidSupplierEntries = [];
-    const recordsToInsert = [];
-    const materialsToInsert = [];
-    const suppliersToInsert = [];
+
+const existingRecordsMap = new Map();
+existingRecords.forEach(record => {
+  const key = `${record.purchase_order}-${record.item}`;
+  existingRecordsMap.set(key, record);
+});
+
+// Crear un mapa para evitar duplicados en recordsToInsert
+const recordsToInsertMap = new Map();
+recordsToInsert.forEach(record => {
+  const key = `${record.purchase_order}-${record.item}`;
+  recordsToInsertMap.set(key, record);
+});
+
 
     for (const row of  data) {
       const args = {};
@@ -822,64 +728,124 @@ export const ImportDataBase = ({ sharedState, updateSharedState}) => {
       }
       if (selectedTable === "Registros") {
 
-        const [
-          purchase_order,
-          position,
-          material_code,
-          description,
-          quantity,
-          measurement_unit,
-          unit_price,
-          net_price,
-          supplier_name,
-          currency
-        ] = row;
+        // Desestructurar la fila de datos
+const [
+  purchase_order,
+  position,
+  material_code,
+  description,
+  quantity,
+  measurement_unit,
+  unit_price,
+  net_price,
+  supplier_name,
+  currency
+] = row;
 
+cont2 += 1;
+console.log("Registro número:", cont2);
 
-        cont2 = cont2 + 1;
-        console.log("registro numero: ",cont2)
-        const existingRecord = existingRecords.find(record => record.purchase_order === purchase_order && record.item === position);
-        let supplierId;
+// Generar clave única para búsquedas rápidas
+const recordKey = `${purchase_order}-${position}`;
 
-        if (!existingRecord) {
-          const domainExists = await selectSuppliers({page: 1, limit: 1, equals: {name: supplier_name}});
-          if (domainExists[0]?.name !== supplier_name) {
-            const newSupplier = await insertSupplier({ name: supplier_name });
-            const domain = await getSupplier("", "", supplier_name);
-            supplierId = domain.supplier_id;
-          } else {
-            supplierId = domainExists[0]?.supplier_id;
-          }
-          
-          const unitPriceParsed = parseFloat((parseFloat(parseFloat(normalizeNumber(String(unit_price)))).toFixed(2) * 100).toFixed(0));
-          
-          if (unitPriceParsed && !isNaN(unitPriceParsed)) {
-            recordsToInsert.push({
-              item: parseInt(normalizeNumber(String(position))),
-              approved_quantity: 0,
-              total_quantity: parseFloat(normalizeNumber(String(quantity))),
-              pending_quantity: 0,
-              material_code: String(material_code),
-              purchase_order: String(purchase_order),
-              measurement_unit: measurement_unit,
-              unit_price: parseInt((unitPriceParsed)),
-              currency: String(currency),
-              created_at: new Date().toISOString(),
-              supplier_id: parseInt(supplierId),
-              description: String(description),
-              net_price: parseInt(parseFloat((parseFloat(parseFloat(normalizeNumber(String(net_price))) * 100).toFixed(0)))),
-            });
-          } else {
-            
-          }
-        }
-        completedTasks += 1;
+// Validaciones de campos requeridos
+if (
+  !purchase_order || !position || !material_code || !description || !quantity || 
+  !measurement_unit || !unit_price || !net_price || !supplier_name || !currency
+) {
+  invalidbills.push({ purchase_order, item: position, reason: "Faltan datos obligatorios" });
+  CountGlobal.current = CountGlobal.current + 1;
+  completedTasks += 1;
+  continue
+}
 
+// Validaciones de valores no permitidos
+if (!["COP", "USD", "EUR"].includes(currency)) {
+  invalidbills.push({ purchase_order, item: position, reason: "Moneda inválida" });
+  CountGlobal.current = CountGlobal.current + 1;
+  completedTasks += 1;
+  continue
+}
 
-        if (completedTasks % updateThreshold === 0 || completedTasks === totalTasks) {
-          const progress = (completedTasks / totalTasks) * 100;
-          setProgress(progress);
-        }
+if (parseFloat(net_price) <= 0) {
+  invalidbills.push({ purchase_order, item: position, reason: "Precio neto debe ser mayor a 0" });
+  CountGlobal.current = CountGlobal.current + 1;
+  completedTasks += 1;
+  continue
+}
+
+if (parseFloat(unit_price) <= 0) {
+  invalidbills.push({ purchase_order, item: position, reason: "Precio unitario debe ser mayor a 0" });
+  CountGlobal.current = CountGlobal.current + 1;
+  completedTasks += 1;
+  continue
+}
+
+if (parseFloat(quantity) <= 0) {
+  invalidbills.push({ purchase_order, item: position, reason: "Cantidad debe ser mayor a 0" });
+  CountGlobal.current = CountGlobal.current + 1;
+  completedTasks += 1;
+  continue
+}
+
+if (!Number.isInteger(parseFloat(position)) || parseInt(position) <= 0) {
+  invalidbills.push({ purchase_order, item: position, reason: "Posición debe ser un entero mayor a 0" });
+  CountGlobal.current = CountGlobal.current + 1;
+  completedTasks += 1;
+  continue
+}
+
+// Verificar si ya existe en la BD o en la lista de inserción
+if (!existingRecordsMap.has(recordKey) && !recordsToInsertMap.has(recordKey)) {
+  let supplierId;
+  const domainExists = await selectSuppliers({ page: 1, limit: 1, equals: { name: supplier_name } });
+
+  if (!domainExists[0] || domainExists[0].name !== supplier_name) {
+    await insertSupplier({ name: supplier_name });
+    const domain = await getSupplier("", "", supplier_name);
+    supplierId = domain.supplier_id;
+  } else {
+    supplierId = domainExists[0].supplier_id;
+  }
+
+  const unitPriceParsed = Math.round(parseFloat(normalizeNumber(String(unit_price))) * 100);
+
+  if (!isNaN(unitPriceParsed)) {
+    const newRecord = {
+      item: parseInt(normalizeNumber(String(position))),
+      approved_quantity: 0,
+      total_quantity: parseFloat(normalizeNumber(String(quantity))),
+      pending_quantity: 0,
+      material_code: String(material_code),
+      purchase_order: String(purchase_order),
+      measurement_unit: measurement_unit,
+      unit_price: unitPriceParsed,
+      currency: String(currency),
+      created_at: new Date().toISOString(),
+      supplier_id: parseInt(supplierId),
+      description: String(description),
+      net_price: Math.round(parseFloat(normalizeNumber(String(net_price))) * 100),
+    };
+
+    recordsToInsert.push(newRecord);
+    recordsToInsertMap.set(recordKey, newRecord);
+  } else {
+    invalidbills.push({ purchase_order, item: position, reason: "Error al procesar precios" });
+  }
+} else {
+  console.log("Se repitio:",purchase_order," con item: ",position)
+  duplicateRecords.push({
+    attempted: { purchase_order, item: position },
+    existing: recordsToInsertMap.get(recordKey) || existingRecordsMap.get(recordKey)
+  });
+}
+CountGlobal.current = CountGlobal.current + 1;
+completedTasks += 1;
+
+if (completedTasks % updateThreshold === 0 || completedTasks === totalTasks) {
+  const progress = (completedTasks / totalTasks) * 100;
+  setProgress(progress);
+}
       } else if (selectedTable === "Materiales") {
 
 
@@ -1066,7 +1032,7 @@ if (materialsMap.has(normalizedMaterialCode)) {
           return invalid.reduce((acc, data) => {
  
             if (invalidbills.length > 0) {
-              acc.push([data.purchase_order, data.item, "Bills"]);
+              acc.push([data.purchase_order, data.item, data.reason, "Bills"]);
             }
   
             else if (invalidmaterials.length > 0) {
@@ -1237,23 +1203,12 @@ const vamosaver = () => {
 
 const textRef = useRef(null);
 
-  useEffect(() => {
-    let animationFrame;
-    const updateText = () => {
-      if (textRef.current) {
-        textRef.current.innerText = `${CountGlobal.current}/${data.length}`;
-      }
-      // Programa la siguiente actualización
-      animationFrame = requestAnimationFrame(updateText);
-    };
-
-    // Inicia la actualización
-    updateText();
-
-    // Limpia al desmontar
-    return () => cancelAnimationFrame(animationFrame);
-  }, [CountGlobal]);
-
+useEffect(() => {
+  if(!isOpen2){
+    setEdit(false)
+  }
+}, [isOpen2]);
+const [edit,setEdit] = useState(false)
  
   return (
     <>
@@ -1315,19 +1270,22 @@ const textRef = useRef(null);
               <Icon as={AddIcon} w={5} h={5} color="black" />
             </Button>
           </Tooltip>
-          {(selectedTable === "Materiales") && (
+
             <Tooltip label="Editar" fontSize="md">
             <Button
 
               colorScheme='teal'
               backgroundColor='#F1D803'
-              onClick={onOpen2}
+              onClick={() => {
+                setEdit(true); // Cambia true a false y viceversa
+                onOpen2(); // Ejecuta la función existente
+              }}
 
             >
               <Icon as={EditIcon} w={5} h={5} color="black" />
             </Button>
           </Tooltip>
-          )}
+          
           {!iSmallScreen && (
             <>
             <VStack width="35%"></VStack>
@@ -1341,24 +1299,31 @@ const textRef = useRef(null);
             </>
           )}
         </HStack>
+
+
         {showModal && (
   <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 transition-opacity duration-300">
     <div className="bg-white p-4 w-5/6 max-w-md border text-center border-gray-300 rounded-3xl shadow-md relative z-20">
       <h2 className="text-xl font-bold mb-4">Solicitudes que fallaron</h2>
       
       {/* Mostrar el título dependiendo del tipo de datos */}
-      {groupedBillsArray1.length > 0 && groupedBillsArray1[0][2] === "Bills" && (
+      {groupedBillsArray1.length > 0 && groupedBillsArray1[0][3] === "Bills" && (
         <>
           <p className="font-bold mb-2">Registros</p>
           <Box maxH="230px" overflowY="auto" p="2" border="1px solid #ddd" borderRadius="md">
             <VStack spacing={3} align="stretch">
-              {groupedBillsArray1.map(([purchase_order, item], index) => (
-                <Box key={index} border="1px solid #ccc" borderRadius="md" padding="2" backgroundColor="gray.100">
+              {groupedBillsArray1.map(([purchase_order, item, reason], index) => (
+                <>
+                {purchase_order && (
+                  <Box key={index} border="1px solid #ccc" borderRadius="md" padding="2" backgroundColor="gray.100">
                   <HStack spacing={5}>
                     <p><strong>OC:</strong> {purchase_order}</p>
                     <p><strong>ITEM:</strong> {item}</p>
+                    <p><strong>razon:</strong> {reason}</p>
                   </HStack>
                 </Box>
+                )}
+                </>
               ))}
             </VStack>
           </Box>
@@ -1414,65 +1379,9 @@ const textRef = useRef(null);
     </div>
   </div>
 )}
-        <Modal isOpen={isOpen2} onClose={onClose2}>
-      <ModalOverlay />
-      <ModalContent bgColor="gray.200">
-        <ModalHeader>Actualizar Material</ModalHeader>
-        <ModalCloseButton />
-        <ModalBody>
-          <FormControl isRequired>
-            <FormLabel>Código de Material</FormLabel>
-            <HStack>
-            <Input
-              bgColor="white"
-              name="input1"
-              value={formDataa.input1}
-              onChange={handleChangee}
-            />
-            <Button onClick={fetchMaterialData}>Buscar</Button>
-            </HStack>
-          </FormControl>
-          <FormControl isRequired>
-            <FormLabel>Subpartida</FormLabel>
-            <Input
-              bgColor="white"
-              name="input2"
-              value={formDataa.input2}
-              onChange={handleChangee}
-            />
-          </FormControl>
-          <FormControl isRequired>
-            <FormLabel>Tipo de Material</FormLabel>
-            <Select
-              bgColor="white"
-              name="select2"
-              value={formDataa.select2}
-              onChange={handleChangee}
-              placeholder="Selecciona una opción"
-            >
-              <option value="national">NACIONAL</option>
-              <option value="foreign">EXTRANJERO</option>
-              <option value="nationalized">NACIONALIZADO</option>
-              <option value="other">OTRO</option>
-            </Select>
-          </FormControl>
-          <FormControl isRequired>
-            <FormLabel>Unidad de Medida</FormLabel>
-            <Input
-              bgColor="white"
-              name="input3"
-              value={formDataa.input3}
-              onChange={handleChangee}
-            />
-          </FormControl>
-        </ModalBody>
-        <ModalFooter>
-          <Button colorScheme="blue" onClick={handleSubmitt}>
-            Actualizar
-          </Button>
-        </ModalFooter>
-      </ModalContent>
-    </Modal>
+        {edit && (
+          <Modals isOpen2={isOpen2} onOpen2={onOpen2} onClose2={onClose2} Case={selectedTable}/>
+        )}
         <Modal isOpen={isOpen} onClose={onClose}>
           <ModalOverlay />
           <ModalContent bgColor="gray.200">

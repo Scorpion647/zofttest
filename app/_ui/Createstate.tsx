@@ -88,7 +88,7 @@ export const CreatelargeAdmin: React.FC<CreatelargeAdminProps> = ({ sharedState,
   const [Role, setRole] = useState("")
   const toast = useToast();
 
-
+  const [count,setcount] = useState(0)
   const [IsAdmin, setIsAdmin] = useState(false)
   interface InvoiceData {
     consecutivo: string;
@@ -254,7 +254,11 @@ useEffect(() => {
     try {
       const role = await getRole();
       setRole(role || "");
-
+      if(count === 0 && role === "administrator"){
+        setcount(1)
+        setSelectedStatus("pending")
+        return
+      }
       if (selectedStatus !== "all") {
         if (!inputValue || inputValue === "") {
           filter = { page: currentPage, limit: 7, orderBy: { column: "updated_at", options: { ascending: (role === "administrator" ? true : false) } }, equals: { state: (selectedStatus === "approved" ? "approved" : (selectedStatus === "pending" ? "pending" : "rejected")) } }

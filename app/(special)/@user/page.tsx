@@ -83,11 +83,11 @@ if (words.length === 1) {
 }
 }
 
-console.log(transformName("jhoy castro"))
+/*console.log(transformName("jhoy castro"))
 console.log(transformName("jhoy castro casanova"))
 console.log(transformName("jhoy casanova"))
 console.log(transformName("jhoyluis castro"))
-console.log(transformName("jhoylasq castro"))
+console.log(transformName("jhoylasq castro"))*/
 
   const handleLogout = async () => {
     try {

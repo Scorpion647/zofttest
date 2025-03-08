@@ -92,19 +92,21 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
       const hot = hotTableRef.current.hotInstance;
       if (!hot || hot.isDestroyed) return;
       setIsLoading2(true)
-      console.log("hola1")
+
       const invoice = await selectSingleInvoice(invoi);
-      console.log("hola2")
+
       // Manejo de estados inicial
-      setisActive(invoice.state !== "approved");
-      console.log("hola3")
-      setButton(invoice.state === "approved" ? false : (invoice.state === "View" ? true : false));
-      console.log("hola4")
+      invoice.state !== "approved"
+      setisActive((invoice.state === "approved" ? false : (invoice.state === "pending" ? false : true)));
+
+      setButton(invoice.state === "approved" ? false : (invoice.state === "pending" ? true : false));
+
+
       // Obtén los datos una sola vez
       const Data = await getSuplierInvoice(1, 200, invoi);
-      console.log("hola5")
+
       setcopia(Data);
-      console.log("hola6")
+
       let total = 0;
       let bultos = 0;
       let purchase = "";
@@ -117,50 +119,47 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
       const changes = [];
 
       // Procesar las facturas en paralelo
-      console.log("hola7")
+
       const billPromises = Data.map(async (datas) => {
-        console.log("hola8")
+
         if (datas && datas.base_bill_id) {
-          console.log("hola9")
+
           try {
-            console.log("hola10")
+
             const bill = await selectSingleBill(datas.base_bill_id);
-            console.log("hola11")
+
             // Procesar la primera factura y evitar llamadas repetitivas
             if (!purchase) {
-              console.log("hola2")
+
               purchase = bill[0]?.purchase_order || "";
               const pro = await selectSingleSupplier(bill[0]?.supplier_id);
               setrealcurrency(bill[0]?.currency)
               updateSharedState('TRMCOP', (datas.billed_currency !== bill[0]?.currency ? (parseFloat((datas.billed_unit_price / bill[0]?.unit_price).toFixed(10))) : undefined))
               trmcop = (datas.billed_currency !== bill[0]?.currency ? (parseFloat((datas.billed_unit_price / bill[0]?.unit_price).toFixed(10))) : undefined)
-              console.log("hola13")
+
               proveedor = pro?.name || "";
 
-              console.log("hola14")
+
               const trmCondition = datas.billed_unit_price !== bill[0]?.unit_price;
               updateSharedState('TRM', (datas.billed_currency === "COP" ? false : true));
               setSelectedCurrency(datas.billed_currency)
-              console.log("hola15")
-              console.log("hola16")
-                ;
-              console.log("hola17")
+
 
 
             }
-            console.log("hola18")
+
             // Actualización de campos
             updateSharedState('nofactura', datas.bill_number);
-            console.log("hola19")
+
             total += datas.gross_weight || 0;
             bultos += datas.packages || 0;
 
             // Guardar cambios en la tabla
-            console.log("hola20")
+
             changes.push([cont, 0, bill[0].item]);
-            console.log("hola21")
+
             changes.push([cont, 2, datas.billed_quantity]);
-            console.log("hola22")
+
 
 
             cont++;
@@ -170,28 +169,28 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
         }
       });
 
-      console.log("hola23")
-      await Promise.all(billPromises);
-      console.log("hola24")
 
-      console.log("contador: " + cont)
+      await Promise.all(billPromises);
+
+
+
       cantidad = Math.ceil(cont / 10)
-      console.log("Esto es cantidad: " + cantidad)
+
 
       // Actualización final del estado
 
       updateSharedState('pesototal', parseFloat(total.toFixed(2)));
-      console.log("hola25")
+
       updateSharedState('bultos', parseFloat(bultos.toFixed(0)));
-      console.log("hola26")
+
       updateSharedState('proveedor', proveedor);
-      console.log("hola27")
+
       setOrderNumber(purchase);
-      console.log("hola28")
+
 
       // Crear pares y mantener la relación
       const grouped = [];
-      console.log("hola29")
+
       for (let i = 0; i < changes.length; i += 2) {
         const dominant = changes[i]; // Dominante
         const companion = changes[i + 1]; // Acompañante
@@ -200,10 +199,10 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
           companion: companion
         });
       }
-      console.log("hola30")
+
 
       // Paso 2: Ordenar los dominantes por su valor
-      console.log("hola31")
+
       grouped.sort((a, b) => a.dominant[2] - b.dominant[2]);
 
       // Paso 3: Asignar nuevas filas
@@ -216,11 +215,11 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
         result.push(newDominant);
         result.push(newCompanion);
       });
-      console.log("hola32")
+
 
       // Actualizar la tabla de Handsontable en batch
       if (result.length > 0 && hot && !hot.isDestroyed) {
-        console.log("hola33")
+
         await new Promise((resolve) => {
           hot.batch(() => {
             hot.setDataAtCell(result);
@@ -234,7 +233,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
             }
           });
         });
-        console.log("hola34")
+
         /*// Usa el hook `afterLoadData` para confirmar cuando los datos han sido recargados
         await new Promise((resolve) => {
             hot.addHookOnce('afterLoadData', () => {
@@ -242,7 +241,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
                 resolve();
             });
         });*/
-        console.log("hola35")
+
 
 
 
@@ -250,7 +249,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
           hot.loadData(hot.getSourceData());  // Recarga usando la fuente original de datos
           console.log("Datos recargados forzadamente.");
         }, 200);
-        console.log("hola36")
+
 
       } else {
         console.log("No hay cambios para aplicar o la instancia de Handsontable no está disponible.");
@@ -260,12 +259,18 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
     } finally {
       const hot = hotTableRef.current.hotInstance;
       if (!hot || hot.isDestroyed) return;
-      console.log("hola37")
+
       setTimeout(() => {
         updateSharedState('TRMCOP', trmcop)
+        const totalSum = data.reduce((sum, row) => {
+        const unip = parseFloat(String(row[3]).replace(/[$,]/g, '')) || 0;
+        const can = parseFloat(row[2]) || 0;
+        return unip > 0 && can > 0 ? sum + (unip * can) : sum;
+      }, 0);
+      updateSharedState('totalfactura', formatMoney(totalSum.toFixed(2)));
         setIsLoading2(false)
       }, ((7 * cantidad) * 1000));
-      console.log("hola38")
+
 
     }
   };
@@ -386,11 +391,10 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
     } else {
       delete globalCounter[rowIndex];  // Elimina la fila del contador si no es secuencia automática
     }
-    console.log("Terminamos de hace el update")
+
   }
 
   function getCounter(row) {
-    console.log("Estamos buscando el update")
     return globalCounter[row];
   }
 
@@ -692,7 +696,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
             if (hola === Number(row[0])) {
               const { material_code, unit_price, total_quantity, pending_quantity, approved_quantity } = records;
 
-              if (parseFloat(approved_quantity) < parseFloat(total_quantity)) {
+              if (parseFloat(approved_quantity) < parseFloat(total_quantity) || isLoading2) {
                 const materialDetails = await getMaterial(material_code);
                 const subheading = materialDetails?.subheading || "";
 
@@ -701,19 +705,19 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
 
 
                 if (((realcurrency === "USD" || realcurrency === "EUR") && selectedCurrency === "COP") || ((selectedCurrency === "USD" && realcurrency === "EUR") || (selectedCurrency === "EUR" && realcurrency === "USD"))) {
-                  console.log("HOLA1")
+
                   changes.push([rowIndex, 3, String(formatMoney((unit_price / 100) * sharedState.TRMCOP))]);
                   changes.push([rowIndex, 4, String((formatMoney((((unit_price / 100) * sharedState.TRMCOP * data[rowIndex][2])))))]);
                 } else if (realcurrency === "COP" && selectedCurrency !== "COP") {
-                  console.log("HOLA2")
+
                   changes.push([rowIndex, 3, String(formatMoney((unit_price / 100) * sharedState.TRMCOP))]);
                   changes.push([rowIndex, 4, String((formatMoney((((unit_price / 100) * sharedState.TRMCOP * data[rowIndex][2])))))]);
                 } else if (realcurrency === selectedCurrency) {
-                  console.log("HOLA3")
+
                   changes.push([rowIndex, 3, String(formatMoney(unit_price / 100))]);
                   changes.push([rowIndex, 4, String(formatMoney((unit_price / 100) * data[rowIndex][2]))]);
                 } else {
-                  console.log("HOLA4")
+
                   changes.push([rowIndex, 3, ""]);
                   changes.push([rowIndex, 4, ""]);
                 }
@@ -946,12 +950,10 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
               billed_currency: conver,
               modified_at: new Date().toISOString()
             }
-            console.log("Este es Up", up)
             update.push(up);
 
           } else {
             records.push(record);
-            console.log("Este es record", record)
           }
         }
       } else {
@@ -1058,23 +1060,30 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
 
     if ((records[0]?.item !== 0 && records[0]?.item !== "" && records[0]?.item !== null && records[0]?.item !== undefined && records[0]?.item !== NaN) && (pos !== 0 && pos !== "" && pos !== undefined && pos !== NaN && pos !== null)) {
       const { unit_price, material_code, currency, description, supplier_id, total_quantity, approved_quantity, pending_quantity } = matchedRecord;
-      if (parseFloat(approved_quantity) < parseFloat(total_quantity)) {
+      if (parseFloat(approved_quantity) < parseFloat(total_quantity) || (isTable !== "Create" && !isActive)) {
 
         const supplier = await getSupplier(supplier_id);
 
         updateSharedState('descripcion', description);
         updateSharedState('proveedor', supplier.name);
-        if(isTable === "Create"){
+        let prueba = 0
+        if(isTable !== "Create"){
+          const supplierdata = await selectSupplierData({page: 1, limit: 1, equals: { invoice_id: invoi, base_bill_id: matchedRecord.base_bill_id}}) 
+          prueba = supplierdata[0]?.billed_quantity
+        }
+
+
+        if(isTable === "Create" || (prueba !== 0 && isTable === "Create")){
           updateSharedState('cantidadoc', (total_quantity - approved_quantity - pending_quantity));
           updateSharedState('totalOC', (total_quantity));
           updateSharedState('OCusada', (approved_quantity + pending_quantity));
         }else{
 
+          
           const supplierdata = await selectSupplierData({page: 1, limit: 1, equals: { invoice_id: invoi, base_bill_id: matchedRecord.base_bill_id}}) 
-
-          updateSharedState('cantidadoc', (supplierdata[0].billed_quantity));
+          updateSharedState('cantidadoc', (supplierdata[0]?.billed_quantity));
           updateSharedState('totalOC', (total_quantity));
-          updateSharedState('OCusada', ((approved_quantity + pending_quantity) - supplierdata[0].billed_quantity));
+          updateSharedState('OCusada', ((approved_quantity + pending_quantity) - supplierdata[0]?.billed_quantity));
         }
         if (realcurrency === "COP") {
           let valor = await getExchangeRate("trm_usd")
@@ -1310,11 +1319,9 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
         }
 
         const factunitprice = (currency === selectedCurrency ? unit : parseFloat(String(hotInstance.getDataAtCell(index, 3)).replace(/[$,]/g, '')));
-        console.log("Unitprice: ", factunitprice)
-        console.log("Cambio en unit: ", Math.round(factunitprice * 100))
+
         const totalprice = (currency === selectedCurrency ? total : (factunitprice * parseFloat(hotInstance.getDataAtCell(index, 2))).toFixed(2));
-        console.log("TotalPrice: ", totalprice)
-        console.log("Cambio en total: ", Math.round(totalprice * 100))
+
         const gross = ((((hotInstance.getDataAtCell(index, 2) / sharedState.columnSum) * sharedState.pesototal))).toFixed(9);
         const packag = ((((hotInstance.getDataAtCell(index, 2) / sharedState.columnSum) * sharedState.bultos))).toFixed(9);
         let conver = 0
@@ -1500,7 +1507,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
               <Button onClick={() => setisTable(false)} width="30%" height="100%" colorScheme='teal' backgroundColor='#F1D803'>
                 <ArrowBackIcon w={3} h={3} color='black' />
               </Button>
-              {isButton && (
+              {(isButton && !isActive) && (
                 <Tooltip label="Habilitar Edicion" fontSize="md">
                   <Button onClick={toggleActive} width="30%" height="100%" colorScheme='teal' backgroundColor='#F1D803'>
                     <Icon as={EditIcon} w={3} h={3} color="black" />
@@ -1510,7 +1517,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
 
             </HStack>
 
-            <HStack>
+            <HStack width="100%" align="start" justify="start">
               <Input
                 border='1px'
                 backgroundColor='white'
@@ -1541,7 +1548,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
             <HStack width="100%" align="start" justify="start">
             <Popover placement="bottom-start">
       <PopoverTrigger align="start" justify="start">
-        <Button colorScheme='teal'  h="5" bgColor="#F1D803">
+        <Button isDisabled={!isActive} colorScheme='teal'  h="5" bgColor="#F1D803">
           <Text textColor="black" fontSize="60%">Opciones</Text>
         </Button>
       </PopoverTrigger>
@@ -1620,7 +1627,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
 
               </VStack>
               <VStack spacing={0} align="end" justify="end" width="70%"  >
-                <Text h="20%" fontSize={iMediumScreen ? "60%" : "70%"}>{sharedState.descripcion}</Text>
+                <Text h="20%"  className=" truncate overflow-ellipsis overflow-hidden w-full justify-end text-end"  fontSize={iMediumScreen ? "60%" : "70%"}>{sharedState.descripcion}</Text>
                 <HStack>
                 {((sharedState.cantidadoc > 0) || (sharedState.OCusada === sharedState.totalOC)) && (
                   <Popover placement="top">
@@ -1656,9 +1663,9 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
                   </Portal>
                 </Popover>
                 )}
-                <Text h="20%" fontSize={iMediumScreen ? "60%" : "70%"}>{sharedState.cantidadoc}</Text>
+                <Text h="20%"  className=" truncate" fontSize={iMediumScreen ? "60%" : "70%"}>{sharedState.cantidadoc}</Text>
                 </HStack>
-                <Text h="20%" fontSize={iMediumScreen ? "60%" : "70%"}>{formatMoney(parseFloat(sharedState.preciouni / 100))}</Text>
+                <Text h="20%"  className=" truncate " fontSize={iMediumScreen ? "60%" : "70%"}>{formatMoney(parseFloat(sharedState.preciouni / 100))}</Text>
 
 
               </VStack>
@@ -1681,20 +1688,20 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
           <HStack width="2.5%">
 
           </HStack>
-          <VStack className=" bg-white rounded-2xl" padding="3" width="25%" spacing="3px" textAlign='center' justifyContent="center" alignItems='center'>
+          <VStack className=" bg-white rounded-2xl" padding="3" width="25%" spacing="3px" >
 
 
-            <HStack align="center" justify="center" height="20%" >
-              <VStack width="40%" align="start" justify="start"><Text fontSize={iMediumScreen ? "55%" : "80%"} className=" font-semibold">Peso Total</Text></VStack>
+            <HStack width="100%" height="20%" >
+              <VStack  className=" truncate"  width="40%" align="start" justify="start"><Text fontSize={iMediumScreen ? "55%" : "80%"} className=" font-semibold">Peso Total</Text></VStack>
               <VStack width="60%" align="end" justify="end"><Input isDisabled={!isActive} fontSize={iMediumScreen ? "55%" : "80%"} width="100%" height="20%" type="number" min="1" step="0.01" onChange={handlepesototal} value={(isTable !== "Create") ? sharedState.pesototal : undefined} backgroundColor='white' border='1px' /></VStack>
 
             </HStack>
-            <HStack align="center" justify="center" height="20%" >
-              <VStack width="40%" align="start" justify="start"><Text fontSize={iMediumScreen ? "55%" : "80%"} type="numeric" className=" font-semibold">Bultos</Text></VStack>
+            <HStack width="100%"  height="20%" >
+              <VStack  className=" truncate"  width="40%" align="start" justify="start"><Text fontSize={iMediumScreen ? "55%" : "80%"} type="numeric" className=" font-semibold">Bultos</Text></VStack>
               <VStack width="60%" align="end" justify="end"><Input isDisabled={!isActive} fontSize={iMediumScreen ? "55%" : "80%"} width="100%" height="20%" type="number" min="1" step="1" onChange={handlebulto} value={(isTable !== "Create") ? sharedState.bultos : undefined} backgroundColor='white' border='1px' /></VStack>
             </HStack>
-            <HStack align="center" justify="center" height="20%" >
-              <VStack width="40%" align="start" justify="start"><Text fontSize={iMediumScreen ? "55%" : "80%"} className=" font-semibold">No. Factura</Text></VStack>
+            <HStack width="100%"  height="20%" >
+              <VStack className=" truncate"  width="40%" align="start" justify="start"><Text fontSize={iMediumScreen ? "55%" : "80%"} className=" font-semibold">No. Factura</Text></VStack>
               <VStack width="60%" align="end" justify="end"><Input isDisabled={!isActive} fontSize={iMediumScreen ? "55%" : "80%"} width="100%" height="20%" onChange={handleNoFactura} value={(isTable !== "Create") ? sharedState.nofactura : undefined} backgroundColor='white' border='1px' /></VStack>
             </HStack>
 
@@ -2054,7 +2061,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
                     }else{
                       const supplierdata = await selectSupplierData({ page: 1, limit: 1, equals: {invoice_id: invoi, base_bill_id: record[0]?.base_bill_id}})
 
-                      if(valueX > parseFloat(supplierdata[0].billed_quantity) || valueX < 1){
+                      if(valueX > parseFloat(supplierdata[0]?.billed_quantity) || valueX < 1){
                         batchChanges.push([rowIndex, colIndex, ""]);
                       }
                     }
@@ -2085,7 +2092,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
                     try {
                       const pos = data[row][0];
           
-          
+
                       if(!orderNumber || !pos ) return
                       if(orderNumber === "" || pos === "") return
                       if (isNaN(orderNumber) || isNaN(pos)) {
@@ -2093,12 +2100,13 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
                       }
                       const records = await selectByPurchaseOrder(orderNumber,pos)
           
-          
+
                       if (Number(records[0]?.item) === Number(pos)) {
                         const { material_code, unit_price, total_quantity, pending_quantity, approved_quantity } = records[0];
-          
 
-                        if (((parseFloat(approved_quantity) + parseFloat(pending_quantity) ) < parseFloat(total_quantity)) ) {
+
+                        if (((parseFloat(approved_quantity) + parseFloat(pending_quantity) ) < parseFloat(total_quantity))) {
+
                           try{
                             const materialDetails = await getMaterial(material_code);
                           const subheading = materialDetails?.subheading || '';
@@ -2115,29 +2123,20 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
                             console.error("El Material no existe")
                           }
           
-                          /*if (sharedState.TRM) {
-                            batchChanges.push([row, 3, String(formatMoney(unit_price/100))]);
-                          } else if (!sharedState.TRM && (parseFloat(sharedState.TRMCOP) !== 0 && String(sharedState.TRMCOP) !== "")) {
-                            batchChanges.push([row, 3, String(formatMoney((unit_price/100) * sharedState.TRMCOP))]);
-                          } else {
-                            batchChanges.push([row, 3, ""]);
-                            batchChanges.push([row, 4, ""]);
-                          }*/
-          
                           if(((realcurrency === "USD" || realcurrency === "EUR") && selectedCurrency === "COP" ) || ((selectedCurrency === "USD" && realcurrency === "EUR") || (selectedCurrency === "EUR" && realcurrency === "USD"))){
-                            console.log("HOLA1")
+
                             batchChanges.push([row, 3, String(formatMoney((unit_price/100) * sharedState.TRMCOP))]);
           
                           }else if(realcurrency === "COP" && selectedCurrency !== "COP"){
-                            console.log("HOLA2")
+
                             batchChanges.push([row, 3, String(formatMoney((unit_price/100) * sharedState.TRMCOP))]);
           
                           }else if(realcurrency === selectedCurrency){
-                            console.log("HOLA3")
+
                             batchChanges.push([row, 3, String(formatMoney(unit_price/100))]);
           
                           }else{
-                            console.log("HOLA4")
+
                             batchChanges.push([row, 3, ""]);
                             batchChanges.push([row, 4, ""]);
                           }

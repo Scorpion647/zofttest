@@ -121,12 +121,16 @@ export async function updateMaterial(
 export async function deleteMaterial(
   material_code: Arrayable<Tables<"materials">["material_code"]>,
 ) {
-  const { error } = await supabase
-    .from("materials")
-    .delete()
-    .eq("material_code", material_code);
+  const materialList = material_code instanceof Array ? material_code : [material_code];
 
-  if (error) {
-    throw error;
+  for (const code of materialList) {
+    const { error } = await supabase
+      .from("materials")
+      .delete()
+      .eq("material_code", code);
+
+    if (error) {
+      throw error;
+    }
   }
 }
