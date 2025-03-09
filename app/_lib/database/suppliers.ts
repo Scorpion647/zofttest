@@ -24,7 +24,7 @@ export async function selectSingleSupplier(
 export async function selectSuppliers(
   params: MultiSelectQuery<Tables<"suppliers">>,
 ) {
-  let query = supabase.from("suppliers").select("*");
+  let query = supabase.from("suppliers").select();
 
   if (params.equals) {
     const keys = Object.keys(params.equals) as Array<
@@ -36,13 +36,12 @@ export async function selectSuppliers(
         query = query.eq(key, params.equals[key]);
       }
     }
-  }
-
-  if (params.search && params.search.trim().length > 0) {
+  } else if (params.search && params.search.trim().length > 0) {
     query = query.textSearch("supplier_search", params.search, {
       type: "websearch",
     });
   }
+
   if (params.orderBy) {
     const orderList =
       params.orderBy instanceof Array ? params.orderBy : [params.orderBy];
@@ -102,14 +101,18 @@ export async function updateSupplier(
 }
 
 export async function deleteSupplier(
-  supplier_id: Arrayable<Tables<"suppliers">["supplier_id"]>,
+  supplier_id: Arrayable<Tables<"suppliers">["supplier_id"]>
 ) {
   const { error } = await supabase
     .from("suppliers")
     .delete()
-    .eq("supplier_id", supplier_id);
+    .in(
+      "supplier_id",
+      Array.isArray(supplier_id) ? supplier_id : [supplier_id]
+    );
 
   if (error) {
     throw error;
   }
 }
+

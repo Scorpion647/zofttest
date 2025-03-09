@@ -139,18 +139,47 @@ export async function insertInvoiceDoc(
   return storageErrors.length > 0 ? storageErrors : undefined;
 }
 
-export async function deleteInvoiceDoc(
+export async function getDocDownloadLink(
   document: Tables<"invoice_docs">,
   supplier_id: Tables<"suppliers">["supplier_id"],
-  all: boolean = false,
 ) {
   const { doc_id, invoice_id } = document;
+  const invoicePath = `${supplier_id}/${invoice_id}`;
+
+  const { data, error } = await supabase.storage
+    .from("invoices")
+    .createSignedUrl(`${invoicePath}/${doc_id}`, 180);
+  if (error) {
+    console.error(error);
+    throw error;
+  }
+
+  return `${data.signedUrl}?download=${invoice_id}_${doc_id}.pdf`;
+}
+
+export async function deleteInvoiceDocs(
+  document: Tables<"invoice_docs">,
+  supplier_id: Tables<"suppliers">["supplier_id"],
+) {
+  const { doc_id, invoice_id } = document;
+  const invoicePath = `${supplier_id}/${invoice_id}`;
+
+  const { data: list, error: selectError } = await supabase.storage
+    .from("invoices")
+    .list(invoicePath);
+  if (selectError) {
+    console.error(selectError);
+    throw selectError;
+  }
+
+  const filesToRemove = list.map((it) => `${invoicePath}/${it.name}`);
 
   const { error: storageE } = await supabase.storage
     .from("invoices")
-    .remove([`${supplier_id}/${invoice_id}/${all ? "" : doc_id}`]);
+    .remove(filesToRemove);
 
   if (storageE) {
+    console.error(storageE);
     throw storageE;
   }
 
@@ -158,7 +187,10 @@ export async function deleteInvoiceDoc(
     .from("invoice_docs")
     .delete()
     .eq("doc_id", doc_id);
-  if (error) throw error;
+  if (error) {
+    console.error(error);
+    throw error;
+  }
 }
 
 export async function updateInvoice(
@@ -183,7 +215,7 @@ export async function deleteInvoice(
   const { error } = await supabase
     .from("invoice_data")
     .delete()
-    .eq("invoice_id", invoice_id);
+    .in("invoice_id", Array.isArray(invoice_id) ? invoice_id : [invoice_id]);
 
   if (error) {
     throw error;
