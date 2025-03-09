@@ -15,7 +15,7 @@ import { SearchIcon, ArrowBackIcon, EditIcon, InfoOutlineIcon } from "@chakra-ui
 import Handsontable from 'handsontable';
 import { HotTable } from '@handsontable/react';
 import 'handsontable/dist/handsontable.full.css';
-import { getRecords, getMaterial, getSupplier, insertRecordInfo, getRecord, updateRecord, checkSubheadingExists, getInvo, getSuplierInvoice, getRecordInfo } from '@/app/_lib/database/service';
+import { getRecords, getSupplier, insertRecordInfo, getRecord, updateRecord, checkSubheadingExists, getInvo, getSuplierInvoice, getRecordInfo } from '@/app/_lib/database/service';
 import debounce from "lodash/debounce";
 import { deleteSupplierData, insertSupplierData, selectSingleSupplierData, selectSupplierData, selectSupplierDataByInvoiceID, updateSupplierData } from "../_lib/database/supplier_data";
 
@@ -762,8 +762,8 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
               const { material_code, unit_price, total_quantity, pending_quantity, approved_quantity } = records;
 
               if (parseFloat(approved_quantity) < parseFloat(total_quantity) || isLoading2) {
-                const materialDetails = await getMaterial(material_code);
-                const subheading = materialDetails?.subheading || "";
+                const materialDetails = await selectMaterials({limit: 1, page: 1, equals: {material_code: material_code}});
+                const subheading = materialDetails[0]?.subheading || "";
 
 
                 changes.push([rowIndex, 1, material_code]);
@@ -944,8 +944,9 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
 
         // Crear o actualizar materiales si se encuentra una subpartida
         if (subheading !== "**********") {
-          const valida = await getMaterial(material_code);
-          if (valida.material_code) {
+
+          const valida = await selectMaterials({limit: 1,page: 1, equals: {material_code: material_code}});
+          if (valida[0]?.material_code === material_code) {
             await updateMaterial({ material_code, subheading });
           } else {
             await insertMaterial({ material_code, subheading });
@@ -1393,8 +1394,8 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
         if (subheading !== "**********") {
           const exists = updatematerials.some(item => item.target === material_code);
           if (!exists) {
-            const valida = await getMaterial(material_code);
-            if (valida.material_code !== undefined) {
+            const valida = await selectMaterials({limit: 1,page: 1, equals: {material_code: material_code}});
+            if (valida[0]?.material_code !== undefined) {
 
               const material = {
                 target: material_code,
@@ -2218,8 +2219,8 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
         const { material_code, unit_price, total_quantity, pending_quantity, approved_quantity } = records[0];
         if ((parseFloat(approved_quantity) + parseFloat(pending_quantity)) < parseFloat(total_quantity)) {
           try {
-            const materialDetails = await getMaterial(material_code);
-            const subheading = materialDetails?.subheading || "";
+            const materialDetails = await selectMaterials({limit: 1,page: 1, equals: {material_code: material_code}});
+            const subheading = materialDetails[0]?.subheading || "";
             // Actualizamos la columna 1 con el material code.
             hot.setDataAtCell(rowIndex, 1, material_code);
             if (subheading) {

@@ -162,23 +162,23 @@ export async function getlastmodified(
 }
 
 export async function checkSubheadingExists(
-  subheading: number,
+  subheading: number, 
 ): Promise<boolean> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("materials")
     .select("subheading")
-    .eq("subheading", subheading)
-    .limit(1); // Limitamos a 1 resultado para optimización
+    .eq("subheading", String(subheading)) 
+    .limit(1); 
 
   if (error) {
     console.error("Error buscando subheading:", error.message);
-    return false; // Retornamos false si hay un error
+    return false;
   }
 
-  // Si los datos no están vacíos, significa que existe el subheading
   return data.length > 0;
 }
+
 
 export async function SearchRecord(
   base_bill_id: number,
@@ -187,16 +187,16 @@ export async function SearchRecord(
   const { data, error } = await supabase
     .from("base_bills")
     .select("*")
-    .eq("base_bill_id", base_bill_id)
+    .eq("base_bill_id", String(base_bill_id))
     .single();
 
   if (error) {
     return handleError(error);
   }
 
-  // Si los datos no están vacíos, significa que existe el subheading
   return data;
 }
+
 
 export async function getMaterials(
   page: number = 1,
@@ -378,21 +378,22 @@ export async function insertRecord(
 
 export async function updateRecord(
   purchase_order: string,
-  item: string,
-  new_data: TablesUpdate<"base_bills">,
+  item: string, 
+  new_data: TablesUpdate<"base_bills">
 ): Promise<CustomDataError | void> {
   const supabase = createClient();
   const { error } = await supabase
     .from("base_bills")
     .update(new_data)
     .eq("purchase_order", purchase_order)
-    .eq("item", item)
+    .eq("item", Number(item)) 
     .single();
 
   if (error) {
     return handleError(error);
   }
 }
+
 
 export async function deleteRecord(
   id: Tables<"base_bills">["base_bill_id"],
@@ -588,19 +589,20 @@ export async function insertSupplier(
 }
 
 export async function updateSupplier(
-  id: Tables<"suppliers">["name"],
+  id: Tables<"suppliers">["supplier_id"], 
   new_data: TablesUpdate<"suppliers">,
 ): Promise<CustomDataError | void> {
   const supabase = createClient();
   const { error } = await supabase
     .from("suppliers")
     .update(new_data)
-    .eq("supplier_id", id);
+    .eq("supplier_id", id); 
 
   if (error) {
     return handleError(error);
   }
 }
+
 
 export async function deleteSupplier(
   args: Tables<"suppliers">["supplier_id"],
