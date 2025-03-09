@@ -7,7 +7,7 @@ import { getRecords, getRecordsInfo, updateRecordInfo, getRecordInfo, getMateria
 import { Textarea,FormControl, FormLabel, Spinner, Switch, Tooltip, Select, ChakraProvider,Icon, Flex, Box, VStack, Heading, HStack, Menu, MenuButton, MenuList, MenuItem, Button, Text, Input, useDisclosure, Modal, ModalOverlay, ModalContent, ModalHeader, ModalCloseButton, ModalBody, ModalFooter, Checkbox } from "@chakra-ui/react";
 import {handleExport} from '@/app/_ui/ExportButton'
 import { updateMaterial, insertMaterial } from '@/app/_lib/database/materials';
-import {  deleteInvoiceDocs, selectInvoice_data, selectSingleInvoice, updateInvoice } from '@/app/_lib/database/invoice_data';
+import {  deleteInvoiceDocs, getDocDownloadLink, selectInvoice_data, selectSingleInvoice, updateInvoice } from '@/app/_lib/database/invoice_data';
 import { FaSave } from "react-icons/fa";
 import { EditIcon } from '@chakra-ui/icons';
 import { Associate_invoice } from '../Associate_invoice';
@@ -678,7 +678,12 @@ const Delete = async () => {
 console.log(suppliers)
 const invo = await selectSingleInvoice(suppliers)
 
-const docs = await deleteInvoiceDocs(invo.invoice_docs[0],invo.supplier_id,true)
+try{
+ const doc = await getDocDownloadLink(invo.invoice_docs[0],invo.supplier_id)
+ console.log(doc)
+}catch(error){
+  console.error(error)
+}
 }
 
 const [contv,setcontv] = useState(0)
