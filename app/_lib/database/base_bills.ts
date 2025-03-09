@@ -51,10 +51,11 @@ export async function deleteBills(
   const { error } = await supabase
     .from("base_bills")
     .delete()
-    .eq("base_bill_id", billID);
+    .in("base_bill_id", Array.isArray(billID) ? billID : [billID]);
 
   if (error) throw error;
 }
+
 
 export async function selectSingleBill(
   id: Tables<"base_bills">["base_bill_id"],
