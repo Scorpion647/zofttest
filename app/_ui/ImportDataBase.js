@@ -693,10 +693,7 @@ const duplicateRecords = [];
     
 
 const existingRecordsMap = new Map();
-existingRecords.forEach(record => {
-  const key = `${record.purchase_order}-${record.item}`;
-  existingRecordsMap.set(key, record);
-});
+
 
 // Crear un mapa para evitar duplicados en recordsToInsert
 const recordsToInsertMap = new Map();

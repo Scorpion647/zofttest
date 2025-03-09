@@ -27,10 +27,10 @@ import { getData } from "../_lib/database/app_data";
 import { selectBills, selectByPurchaseOrder, selectSingleBill } from "../_lib/database/base_bills";
 import { insertInvoice, insertInvoiceDoc, selectSingleInvoice, updateInvoice } from "../_lib/database/invoice_data";
 import { match } from "assert";
-import { updateMaterial, insertMaterial } from "../_lib/database/materials";
+import { updateMaterial, insertMaterial, selectMaterials } from "../_lib/database/materials";
 import { GrDocumentPdf } from "react-icons/gr";
 import { CheckIcon, CloseIcon } from "@chakra-ui/icons";
-
+import useSWR from 'swr';
 
 
 
@@ -286,6 +286,14 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
 
 
 
+
+
+
+
+
+
+
+
   useEffect(() => {
     const config = async () => {
       if (isTable === "Create") {
@@ -479,35 +487,88 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
   const [trmactive, settrmactive] = useState(false)
 
 
+
+  const [initialRecords, setInitialRecords] = useState([]);
+  const [materialResults, setMaterialResults] = useState([]);
+  const [showorder,setshoworder] = useState("")
+
+  // SWR usa como key `purchaseOrderRecords-${orderNumber}` y el fetcher devuelve initialRecords
+  const { data: records, error, mutate } = useSWR(
+    orderNumber ? `purchaseOrderRecords-${orderNumber}` : null,
+    () => Promise.resolve(initialRecords),
+    {
+      fallbackData: initialRecords,
+      revalidateOnFocus: false,
+    }
+  );
+
+  // Verifica los cambios en records
+  useEffect(() => {
+    if (records && records.length > 0) {
+      Promise.all(
+        records.map(async (record) => {
+          try {
+            const result = await selectMaterials({
+              limit: 1,
+              page: 1,
+              equals: { material_code: record.material_code },
+            });
+            return {
+              material_code: record.material_code,
+              data: result ? result : '', // Si existe, guarda el dato; de lo contrario, espacio en blanco.
+            };
+          } catch (error) {
+            console.error(`Error fetching details for ${record.material_code}:`, error);
+            return { material_code: record.material_code, data: undefined };
+          }
+        })
+      ).then((results) => {
+        setMaterialResults(results);
+        console.log("Resultados de Material:", results);
+      });
+    } else {
+      // Si no hay records, limpia materialResults.
+      setMaterialResults([]);
+      console.log("No hay registros, materialResults limpiado.");
+    }
+  }, [records]);
+
   const handleOrderNumberChange = async (e) => {
-    setOrderNumber(e.target.value);
-    const order = e.target.value
+    const order = e.target.value;
+    setshoworder(order)
+
     try {
-
-      const record = await selectBills({ limit: 1, page: 1, equals: { purchase_order: order } })
-
-
-      if (record) {
-        //selectedCurrency.trim().toLowerCase() !== realcurrency.trim().toLowerCase()
-        setrealcurrency(record[0].currency)
-        //if(selectedCurrency.trim().toLowerCase() !== record[0].currency.trim().toLowerCase() && )
-        console.log("RealCurrency: ", record[0].currency)
-        const suplier = await getSupplier(record[0].supplier_id)
-
-        if (suplier.name !== null && suplier.name !== undefined && suplier !== "") {
-          
-          updateSharedState('proveedor', suplier.name);
+      // Obtén los registros asociados al purchase_order
+      const record = await selectBills({ limit: 300, page: 1, equals: { purchase_order: order } });
+      console.log("Orden: ",order)
+      console.log("Orden traida: ",record[0].purchase_order)
+      if (record[0].purchase_order === order) {
+        setOrderNumber(order);
+        
+        const supplier = await getSupplier(record[0].supplier_id);
+        if (supplier && supplier.name) {
+          console.log("Realcurrency: ",record[0].currency)
+          setrealcurrency(record[0].currency);
+        console.log("RealCurrency: ", record[0].currency);
+          // Actualiza el estado local (opcional) y la caché de SWR
+          setInitialRecords(record);
+          // Usa la función mutate del hook sin key, para actualizar la data
+          mutate(record, false);
+          updateSharedState('proveedor', supplier.name);
         } else {
           updateSharedState('proveedor', "");
-          setrealcurrency("")
-
+          setrealcurrency("");
         }
       }
-    } catch {
+    } catch (error) {
+      console.error("Error fetching records", error);
       updateSharedState('proveedor', "");
-      setrealcurrency("")
+      
     }
   };
+
+
+
   const handlebulto = (e) => {
     updateSharedState('bultos', (e.target.value));
   };
@@ -678,7 +739,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
     const hot = hotTableRef.current.hotInstance;
     const data = hot.getData();
 
-
+    await sleep(1500)
     const changes = [];
 
     for (let rowIndex = 0; rowIndex < data.length; rowIndex++) {
@@ -707,21 +768,22 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
 
                 changes.push([rowIndex, 1, material_code]);
 
-
+                console.log(realcurrency)
+                console.log(selectedCurrency)
                 if (((realcurrency === "USD" || realcurrency === "EUR") && selectedCurrency === "COP") || ((selectedCurrency === "USD" && realcurrency === "EUR") || (selectedCurrency === "EUR" && realcurrency === "USD"))) {
-
+                  console.log("1")
                   changes.push([rowIndex, 3, String(formatMoney((unit_price / 100) * sharedState.TRMCOP))]);
                   changes.push([rowIndex, 4, String((formatMoney((((unit_price / 100) * sharedState.TRMCOP * data[rowIndex][2])))))]);
                 } else if (realcurrency === "COP" && selectedCurrency !== "COP") {
-
+                  console.log("2")
                   changes.push([rowIndex, 3, String(formatMoney((unit_price / 100) * sharedState.TRMCOP))]);
                   changes.push([rowIndex, 4, String((formatMoney((((unit_price / 100) * sharedState.TRMCOP * data[rowIndex][2])))))]);
                 } else if (realcurrency === selectedCurrency) {
-
+                  console.log("2")
                   changes.push([rowIndex, 3, String(formatMoney(unit_price / 100))]);
                   changes.push([rowIndex, 4, String(formatMoney((unit_price / 100) * data[rowIndex][2]))]);
                 } else {
-
+                  console.log("4")
                   changes.push([rowIndex, 3, ""]);
                   changes.push([rowIndex, 4, ""]);
                 }
@@ -743,6 +805,8 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
 
                 if (subheading) {
                   changes.push([rowIndex, 5, String("**********")]);
+                }else{
+                  changes.push([rowIndex, 5, String("")]);
                 }
               }
             } else if (hola1 === 1) {
@@ -849,7 +913,10 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
 
         hasCompleteRow = true;
         const pos = hotInstance.getDataAtCell(index, 0);
-        const matchedRecord = await getRecord(orderNumber, pos);
+
+
+        const matchedRecord = records.find(r => Number(r.item) === Number(pos) && (r.purchase_order) === orderNumber);
+
 
         if (!matchedRecord) {
           console.error(`No se encontró el registro para la posición ${pos}`);
@@ -1056,20 +1123,21 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
       return; // Salir de la función si alguno no es un número
     }
 
-    const records = await selectByPurchaseOrder(orderNumber, pos);
+    const record = records.find(r => Number(r.item) === Number(pos) && (r.purchase_order) === orderNumber);
+
+    
 
 
 
-    const matchedRecord = records[0]
+    const matchedRecord = record
 
-    if ((records[0]?.item !== 0 && records[0]?.item !== "" && records[0]?.item !== null && records[0]?.item !== undefined && records[0]?.item !== NaN) && (pos !== 0 && pos !== "" && pos !== undefined && pos !== NaN && pos !== null)) {
+    if ((record.item !== 0 && record.item !== "" && record.item !== null && record.item !== undefined && record.item !== NaN) && (pos !== 0 && pos !== "" && pos !== undefined && pos !== NaN && pos !== null)) {
       const { unit_price, material_code, currency, description, supplier_id, total_quantity, approved_quantity, pending_quantity } = matchedRecord;
       if (parseFloat(approved_quantity) < parseFloat(total_quantity) || (isTable !== "Create" && !isActive)) {
 
-        const supplier = await getSupplier(supplier_id);
+
 
         updateSharedState('descripcion', description);
-        updateSharedState('proveedor', supplier.name);
         let prueba = 0
         if(isTable !== "Create"){
           const supplierdata = await selectSupplierData({page: 1, limit: 1, equals: { invoice_id: invoi, base_bill_id: matchedRecord.base_bill_id}}) 
@@ -1569,7 +1637,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
                 backgroundColor='white'
                 isDisabled={isTable !== "Create"}
                 type="text"
-                value={orderNumber}
+                value={showorder}
                 onChange={handleOrderNumberChange}
                 placeholder="Orden de Compra"
               />
@@ -1859,7 +1927,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
 
                 let length = 0;
 
-                if (data[row][5] === null) {
+                if (data[row][5] === null || data[row][5] === "" || data[row][5] === undefined) {
                   length = 0
                 } else {
                   length = data[row][5].length
@@ -2082,6 +2150,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
       }
     }
 
+
     // Procesamiento para la columna 2.
     if (colIndex === 2) {
       const valueX = parseFloat(newValue);
@@ -2196,7 +2265,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
                   if (!hotTableRef.current) return;
                   const hot = hotTableRef.current.hotInstance;
                   const data = hot.getData();
-              
+                  console.log("Tamaño guardado en cache: ",records.length)
                   const changesByRow = new Map();
                   const promises = [];
                   const batchChanges = [];
@@ -2236,17 +2305,18 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
                     if (colIndex === 2) {
                       const valueX = parseFloat(newValue);
                       const value1 = parseFloat(hot.getDataAtCell(rowIndex, 0));
-                      const record = await selectByPurchaseOrder(orderNumber, value1);
+                      const record = records.find(r => Number(r.item) === Number(value1) && (r.purchase_order) === orderNumber);
+
               
                       if (isTable === "Create") {
-                        if (parseFloat(record[0]?.total_quantity) === (parseFloat(record[0]?.approved_quantity) + parseFloat(record[0]?.pending_quantity))) {
+                        if (parseFloat(record.total_quantity) === (parseFloat(record.approved_quantity) + parseFloat(record.pending_quantity))) {
                           batchChanges.push([rowIndex, colIndex, ""]);
                           batchChanges.push([rowIndex, 1, ""]);
                           batchChanges.push([rowIndex, 3, ""]);
                           batchChanges.push([rowIndex, 4, ""]);
                           batchChanges.push([rowIndex, 5, ""]);
                         } else {
-                          if (valueX > parseFloat(record[0]?.total_quantity) || valueX < 1) {
+                          if (valueX > parseFloat(record.total_quantity) || valueX < 1) {
                             batchChanges.push([rowIndex, colIndex, ""]);
                           }
                         }
@@ -2254,9 +2324,9 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
                         const supplierdata = await selectSupplierData({ 
                           page: 1, 
                           limit: 1, 
-                          equals: { invoice_id: invoi, base_bill_id: record[0]?.base_bill_id }
+                          equals: { invoice_id: invoi, base_bill_id: record.base_bill_id }
                         });
-                        if (valueX > parseFloat(supplierdata[0]?.billed_quantity) || valueX < 1) {
+                        if (valueX > parseFloat(supplierdata.billed_quantity) || valueX < 1) {
                           batchChanges.push([rowIndex, colIndex, ""]);
                         }
                       }
@@ -2283,15 +2353,23 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
                       try {
                         const pos = data[row][0];
                         if (!orderNumber || !pos || orderNumber.trim() === "" || pos.trim() === "" || isNaN(orderNumber) || isNaN(pos)) return;
-                        const records = await selectByPurchaseOrder(orderNumber, pos);
-                        if (Number(records[0]?.item) === Number(pos)) {
-                          const { material_code, unit_price, total_quantity, pending_quantity, approved_quantity } = records[0];
+                        const record = records.find(r => Number(r.item) === Number(pos) && (r.purchase_order) === orderNumber);
+                        console.log("Records de la posicion ",pos," : ",record)
+                        if (Number(record.item) === Number(pos)) {
+                          const { material_code, unit_price, total_quantity, pending_quantity, approved_quantity } = record;
               
                           if ((parseFloat(approved_quantity) + parseFloat(pending_quantity)) < parseFloat(total_quantity)) {
+                            const materialDetails = materialResults.find(
+                              m => String(m.material_code) === String(record.material_code)
+                            );
+                            batchChanges.push([row, 1, material_code]);
+                            let subheading = ""
                             try {
-                              const materialDetails = await getMaterial(material_code);
-                              const subheading = materialDetails?.subheading || '';
-                              batchChanges.push([row, 1, material_code]);
+
+                              subheading = materialDetails.data[0].subheading || undefined
+
+                              console.log("Materials Details :",materialDetails)
+                              console.log("Subheading :",subheading)
                               if (subheading) {
                                 batchChanges.push([row, 5, "**********"]);
                                 updateGlobalCounter(row, "**********");
@@ -2301,6 +2379,8 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
                               }
                             } catch {
                               console.error("El Material no existe");
+                              batchChanges.push([row, 5, subheading]);
+                                updateGlobalCounter(row, subheading);
                             }
               
                             if (((realcurrency === "USD" || realcurrency === "EUR") && selectedCurrency === "COP") ||
