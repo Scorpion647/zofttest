@@ -4,14 +4,15 @@ import { HotTable } from '@handsontable/react';
 import 'handsontable/dist/handsontable.full.css';
 import Handsontable from 'handsontable';
 import { getRecords, getRecordsInfo, updateRecordInfo, getRecordInfo, getMaterial, getSupplier, getInvoice, getSuplierInvoice, getRecordInvoice, getInvo, getRecord } from '@/app/_lib/database/service';
-import { Textarea,FormControl, FormLabel, Spinner, Switch, Tooltip, Select, ChakraProvider, Flex, Box, VStack, Heading, HStack, Menu, MenuButton, MenuList, MenuItem, Button, Text, Input, useDisclosure, Modal, ModalOverlay, ModalContent, ModalHeader, ModalCloseButton, ModalBody, ModalFooter, Checkbox } from "@chakra-ui/react";
+import { Textarea,FormControl, FormLabel, Spinner, Switch, Tooltip, Select, ChakraProvider,Icon, Flex, Box, VStack, Heading, HStack, Menu, MenuButton, MenuList, MenuItem, Button, Text, Input, useDisclosure, Modal, ModalOverlay, ModalContent, ModalHeader, ModalCloseButton, ModalBody, ModalFooter, Checkbox } from "@chakra-ui/react";
 import {handleExport} from '@/app/_ui/ExportButton'
 import { updateMaterial, insertMaterial } from '@/app/_lib/database/materials';
-import { selectInvoice_data, selectSingleInvoice, updateInvoice } from '@/app/_lib/database/invoice_data';
+import { deleteInvoiceDoc, selectInvoice_data, selectSingleInvoice, updateInvoice } from '@/app/_lib/database/invoice_data';
 import { FaSave } from "react-icons/fa";
 import { EditIcon } from '@chakra-ui/icons';
 import { Associate_invoice } from '../Associate_invoice';
 import { useSharedState } from '../useSharedState';
+import { GrDocumentPdf } from "react-icons/gr";
 import debounce from "lodash/debounce"; 
 
 function formatMoney(amount) {
@@ -224,7 +225,6 @@ const ReturnTable = ({ suppliers, volver }) => {
   }, [Data]);
 
   const getMergeCells = () => {
-    console.log(hotTableRef.current)
     if (hotTableRef.current !== null && hotTableRef.current.hotInstance !== undefined) {
       const hotInstance = hotTableRef.current.hotInstance;
       const data = hotInstance.getData();
@@ -475,7 +475,7 @@ const data4 = Typematerial(type);
       //alert(active.state + "     " + origin + "     " + status + "       " + numbeer)
       if(active.state !== origin || active.state !== status){
         if(numbeer > 0){
-          sendEmail(suppliers,("El estado de su asociacion a sido cambiado por : "+(status === "approved" ? "Aprobado" : (status === "pending" ? "Pendiente" : "Rechazado") )),(status === "rejected" ? textValue : undefined),(status === "approved" ?  FMM : undefined))
+          sendEmail(suppliers,((status === "approved" ? "Aprobado" : (status === "pending" ? "Pendiente" : "Rechazado") )),(status === "rejected" ? textValue : undefined),(status === "approved" ?  FMM : undefined))
           if(status !== "rejected" && (active.feedback !== "" && active.feedback !== null)){
             await updateInvoice({invoice_id: suppliers, feedback: "" })
           }
@@ -673,6 +673,14 @@ const data4 = Typematerial(type);
  },[Edit])
 
 
+
+const Delete = async () => {
+console.log(suppliers)
+const invo = await selectSingleInvoice(suppliers)
+
+const docs = await deleteInvoiceDoc(invo.invoice_docs[0],invo.supplier_id,true)
+}
+
 const [contv,setcontv] = useState(0)
 const { isOpen: isOpen5, onOpen: onOpen5, onClose: onClose5 } = useDisclosure(); // Hook para abrir/cerrar el modal
   const [textValue, setTextValue] = useState(''); // Estado para el textarea
@@ -786,7 +794,11 @@ const handleChangeFMM = useCallback((e) => {
                          <EditIcon/> 
                         </Button>
                         </Tooltip>
-                        
+                        <Tooltip size="md" label="Descargar factura">
+                        <Button  onClick={Delete} bgColor="#F1D803" textColor="black">
+                         <Icon as={GrDocumentPdf} />
+                        </Button>
+                        </Tooltip>
                         </HStack>
   
                       </Box>

@@ -15,7 +15,7 @@ import { SearchIcon, ArrowBackIcon, EditIcon, InfoOutlineIcon } from "@chakra-ui
 import Handsontable from 'handsontable';
 import { HotTable } from '@handsontable/react';
 import 'handsontable/dist/handsontable.full.css';
-import { getRecords, getMaterial, getSupplier, insertRecordInfo, getRecord, updateRecord, checkSubheadingExists, insertInvoice, getInvo, getSuplierInvoice, getRecordInfo } from '@/app/_lib/database/service';
+import { getRecords, getMaterial, getSupplier, insertRecordInfo, getRecord, updateRecord, checkSubheadingExists, getInvo, getSuplierInvoice, getRecordInfo } from '@/app/_lib/database/service';
 import debounce from "lodash/debounce";
 import { deleteSupplierData, insertSupplierData, selectSingleSupplierData, selectSupplierData, selectSupplierDataByInvoiceID, updateSupplierData } from "../_lib/database/supplier_data";
 
@@ -25,7 +25,7 @@ import { selectSingleSupplier } from "../_lib/database/suppliers";
 import { selectSingleSupplierEmployee } from "../_lib/database/supplier_employee";
 import { getData } from "../_lib/database/app_data";
 import { selectBills, selectByPurchaseOrder, selectSingleBill } from "../_lib/database/base_bills";
-import { selectSingleInvoice, updateInvoice } from "../_lib/database/invoice_data";
+import { insertInvoice, insertInvoiceDoc, selectSingleInvoice, updateInvoice } from "../_lib/database/invoice_data";
 import { match } from "assert";
 import { updateMaterial, insertMaterial } from "../_lib/database/materials";
 import { GrDocumentPdf } from "react-icons/gr";
@@ -78,6 +78,10 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
   const [data, setData] = useState(Array(200).fill().map(() => Array(6).fill('')));
 
   const { isOpen, onOpen, onClose } = useDisclosure();
+
+
+
+
 
 
 
@@ -381,22 +385,22 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
 
 
 
-  let globalCounter = {};
+  const globalCounterRef = useRef({});
 
-  // Función para actualizar el contador y almacenar las filas
+
   function updateGlobalCounter(rowIndex, value) {
-    // Si el valor es '**********', se considera que la fila tiene secuencia automática
     if (value === '**********') {
-      globalCounter[rowIndex] = true;  // Marca la fila como secuencia automática
+      globalCounterRef.current[rowIndex] = true; // Marca la fila como secuencia automática
     } else {
-      delete globalCounter[rowIndex];  // Elimina la fila del contador si no es secuencia automática
+
+      delete globalCounterRef.current[rowIndex]; // Elimina la fila del contador si no es secuencia automática
     }
-
   }
-
+  
   function getCounter(row) {
-    return globalCounter[row];
+    return globalCounterRef.current[row];
   }
+  
 
 
 
@@ -491,7 +495,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
         const suplier = await getSupplier(record[0].supplier_id)
 
         if (suplier.name !== null && suplier.name !== undefined && suplier !== "") {
-
+          
           updateSharedState('proveedor', suplier.name);
         } else {
           updateSharedState('proveedor', "");
@@ -1246,6 +1250,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
     let currency = ""
     let total = 0
     let unit = 0
+    let fileList = {}
     const updatematerials = []
     const insertmaterials = []
 
@@ -1286,11 +1291,35 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
           const role = await getRole()
           const user = await userData()
           email = user.data.user.email
+          if(selectedFile === null && role !== "administrator"){
+            window.alert('Factura no subida, Introduzca su factura atravez de opciones de factura');
+            setIsLoading2(false)
+            return
+          }
           const sup = await selectSingleSupplier(supplier_id)
           suname = sup.name
-          const newInvoice = await insertInvoice({ supplier_id: supplier_id, state: "pending" });
-          console.log("se creooooo: ", newInvoice)
-          id = newInvoice;
+          
+          
+
+          if(selectedFile !== null){
+            try{
+              const newInvoice = await insertInvoice({ supplier_id: supplier_id, state: "pending"},selectedFile);
+            console.log("se creooooo: ", newInvoice.invoiceData[0].invoice_id)
+            id = newInvoice.invoiceData[0].invoice_id;
+            }catch (error) {
+              console.error('Error completo:', error);
+              if (error.message) {
+                console.error('Mensaje de error:', error.message);
+              }
+              if (error.details) {
+                console.error('Detalles del error:', error.details);
+              }
+            }
+          }else{
+            const newInvoice = await insertInvoice({ supplier_id: supplier_id, state: "pending"});
+            console.log("se creooooo: ", newInvoice.invoiceData[0].invoice_id)
+            id = newInvoice.invoiceData[0].invoice_id;
+          }
         }
 
         if (subheading !== "**********") {
@@ -1482,10 +1511,27 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
 
   const [isUploaded, setIsUploaded] = useState(false);
 
+  const [selectedFile, setSelectedFile] = useState(null);
+
   const handleFileChange = (event) => {
     const file = event.target.files?.[0];
-    setIsUploaded(!!file); // Si hay archivo, cambia el estado a true
+    if (file && file.type === "application/pdf") {
+      // event.target.files ya es un FileList, se lo pasamos directamente
+      setSelectedFile(event.target.files);
+      setIsUploaded(true);
+    } else {
+      alert("Por favor, selecciona un archivo PDF.");
+      setSelectedFile(null);
+      setIsUploaded(false);
+    }
   };
+
+
+
+  function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
 
 
 
@@ -1757,7 +1803,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
             manualColumnResize={true}
             rowHeaders={true}
             manualRowResize={true}
-            hiddenColumns={{ indicators: true }}
+            hiddenColumns={false}
             afterSelection={handleAfterSelection}
             afterOnCellMouseDown={handleCellDoubleClick}
             copyPaste={true}
@@ -1991,183 +2037,317 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
             }}
 
 
-            afterChange={debounce(async (changes, source) => {
-              if (source === 'edit' || source === 'CopyPaste.paste') {
-          
-                if(!hotTableRef.current) return
-                const hot = hotTableRef.current.hotInstance;
-                const data = hot.getData();
-          
-                const changesByRow = new Map();
-                const promises = [];
-                const batchChanges = [];
-          
-                for (const [rowIndex, colIndex, oldValue, newValue] of changes) {
-                  if (colIndex === 5) {
-                    if (newValue === '**********' && oldValue !== '**********') {
-                      // Si la fila no está en el contador global, revertimos el valor
-                      if (!getCounter(rowIndex)) {
-                        if(!isLoading2){
-                          batchChanges.push([rowIndex, colIndex, ""]); // Revertimos al valor anterior
-                        console.log("Valor revertido después de la verificación.");
-                        }else{
-                          updateGlobalCounter(rowIndex, "**********");  // Agregar al contador global
-                          console.log("Evitamos una perdida")
+            afterChange={async (changes, source) => {
+
+              if(source === 'edit'){
+                if (!hotTableRef.current) return;
+  
+  const hot = hotTableRef.current.hotInstance;
+  
+  // Recorrer cada cambio detectado.
+  for (const [rowIndex, colIndex, oldValue, newValue] of changes) {
+
+    // Procesamiento para la columna 5.
+    if (colIndex === 5) {
+      await sleep(1500)
+
+      if (newValue === '**********' && oldValue !== '**********') {
+        // Verificamos si la fila tiene contador global.
+        if (!getCounter(rowIndex)) {
+          if (!isLoading2) {
+            // Si no está cargando, revertir el cambio.
+            hot.setDataAtCell(rowIndex, colIndex, "");
+            console.log("Valor revertido después de la verificación.");
+          } else {
+            // Si se está cargando, actualizamos el contador global.
+            updateGlobalCounter(rowIndex, "**********");
+            console.log("Evitamos una pérdida");
+          }
+        } else {
+          console.log("La fila tiene secuencia automática, no se revertirá el valor.");
+        }
+        // Actualizar el contador global para la fila.
+        updateGlobalCounter(rowIndex, newValue);
+      }
+      // Verificar asíncronamente si el nuevo valor (subheading) existe.
+      try {
+        const exists = await checkSubheadingExists(newValue);
+        setSubheadingValidity(prev => {
+          const newMap = new Map(prev);
+          newMap.set(`${rowIndex}-${colIndex}`, exists);
+          return newMap;
+        });
+      } catch (error) {
+        console.error("Error checking subheading:", error);
+      }
+    }
+
+    // Procesamiento para la columna 2.
+    if (colIndex === 2) {
+      const valueX = parseFloat(newValue);
+      const value1 = parseFloat(hot.getDataAtCell(rowIndex, 0));
+      const record = await selectByPurchaseOrder(orderNumber, value1);
+
+      if (isTable === "Create") {
+        if (parseFloat(record[0]?.total_quantity) === (parseFloat(record[0]?.approved_quantity) + parseFloat(record[0]?.pending_quantity))) {
+          // Revertir valores en varias columnas.
+          hot.setDataAtCell(rowIndex, colIndex, "");
+          hot.setDataAtCell(rowIndex, 1, "");
+          hot.setDataAtCell(rowIndex, 3, "");
+          hot.setDataAtCell(rowIndex, 4, "");
+          hot.setDataAtCell(rowIndex, 5, "");
+        } else if (valueX > parseFloat(record[0]?.total_quantity) || valueX < 1) {
+          hot.setDataAtCell(rowIndex, colIndex, "");
+        }
+      } else {
+        const supplierdata = await selectSupplierData({
+          page: 1,
+          limit: 1,
+          equals: { invoice_id: invoi, base_bill_id: record[0]?.base_bill_id }
+        });
+        if (valueX > parseFloat(supplierdata[0]?.billed_quantity) || valueX < 1) {
+          hot.setDataAtCell(rowIndex, colIndex, "");
+        }
+      }
+    }
+
+    // Si el cambio ocurre en la columna 2 o 3, recalcular y actualizar la columna 4.
+    if (colIndex === 2 || colIndex === 3) {
+      // Solo se procesa si las celdas de las columnas 0 y 1 tienen contenido (no vacío)
+      if (hot.getDataAtCell(rowIndex, 0) && hot.getDataAtCell(rowIndex, 1)) {
+        try {
+          const cellValueRaw = hot.getDataAtCell(rowIndex, 2);
+          const value3Raw = hot.getDataAtCell(rowIndex, 3);
+    
+          // Convertir a números
+          const cellValue = parseFloat(cellValueRaw);
+          const value3 = parseFloat(String(value3Raw).replace(/[$,]/g, ''));
+    
+          // Si ambos son números válidos, se realiza el cálculo
+          if (!isNaN(cellValue) && !isNaN(value3)) {
+            const result = cellValue * value3;
+            hot.setDataAtCell(rowIndex, 4, String(formatMoney(result)));
+          } else {
+            // Si alguno no es numérico, limpiamos la celda para evitar errores
+            hot.setDataAtCell(rowIndex, 4, "");
+          }
+        } catch (error) {
+          console.error("Error calculando el valor para la fila", rowIndex, error);
+          hot.setDataAtCell(rowIndex, 4, "");
+        }
+      }
+    }
+
+    // Procesamiento para la columna 0 (si aplica):
+    if (colIndex === 0 && position != null && orderNumber.trim() !== "") {
+      const pos = hot.getDataAtCell(rowIndex, 0);
+      if (!orderNumber || !pos || orderNumber === "" || pos === "" || isNaN(orderNumber) || isNaN(pos)) {
+        continue;
+      }
+      const records = await selectByPurchaseOrder(orderNumber, pos);
+      if (Number(records[0]?.item) === Number(pos)) {
+        const { material_code, unit_price, total_quantity, pending_quantity, approved_quantity } = records[0];
+        if ((parseFloat(approved_quantity) + parseFloat(pending_quantity)) < parseFloat(total_quantity)) {
+          try {
+            const materialDetails = await getMaterial(material_code);
+            const subheading = materialDetails?.subheading || "";
+            // Actualizamos la columna 1 con el material code.
+            hot.setDataAtCell(rowIndex, 1, material_code);
+            if (subheading) {
+              // Si hay subheading, establecemos "**********" y actualizamos el contador global.
+              updateGlobalCounter(rowIndex, "**********");
+              hot.setDataAtCell(rowIndex, 5, "**********");
+            } else {
+              // De lo contrario, se establece el subheading obtenido.
+              updateGlobalCounter(rowIndex, subheading);
+              hot.setDataAtCell(rowIndex, 5, subheading);
+            }
+          } catch (error) {
+            console.error("El Material no existe", error);
+          }
+          // Actualización según conversión de moneda.
+          if (((realcurrency === "USD" || realcurrency === "EUR") && selectedCurrency === "COP") ||
+              ((selectedCurrency === "USD" && realcurrency === "EUR") || (selectedCurrency === "EUR" && realcurrency === "USD"))) {
+            hot.setDataAtCell(rowIndex, 3, String(formatMoney((unit_price / 100) * sharedState.TRMCOP)));
+          } else if (realcurrency === "COP" && selectedCurrency !== "COP") {
+            hot.setDataAtCell(rowIndex, 3, String(formatMoney((unit_price / 100) * sharedState.TRMCOP)));
+          } else if (realcurrency === selectedCurrency) {
+            hot.setDataAtCell(rowIndex, 3, String(formatMoney(unit_price / 100)));
+          } else {
+            hot.setDataAtCell(rowIndex, 3, "");
+            hot.setDataAtCell(rowIndex, 4, "");
+          }
+          setfactunitprice(unit_price);
+          setfacttotalvalue(newValue * unit_price);
+        }
+      } else {
+        console.log(`No matching record found for row ${rowIndex}`);
+      }
+    }
+  }
+  
+  // Renderizar la tabla para reflejar los cambios.
+  hot.render();
+              }
+
+
+              if (source === 'CopyPaste.paste') {
+                const paste = debounce(async () => {
+                  if (!hotTableRef.current) return;
+                  const hot = hotTableRef.current.hotInstance;
+                  const data = hot.getData();
+              
+                  const changesByRow = new Map();
+                  const promises = [];
+                  const batchChanges = [];
+              
+                  // Procesa cada cambio de manera concurrente (sin sleep)
+                  const changePromises = changes.map(async ([rowIndex, colIndex, oldValue, newValue]) => {
+                    // Caso para la columna 5: validación de subheading y contador global
+                    if (colIndex === 5) {
+                      if (newValue === '**********' && oldValue !== '**********') {
+                        if (!getCounter(rowIndex)) {
+                          if (!isLoading2) {
+                            batchChanges.push([rowIndex, colIndex, ""]); // Revertir valor
+                            console.log("Valor revertido después de la verificación.");
+                          } else {
+                            updateGlobalCounter(rowIndex, "**********"); // Actualiza contador global
+                            console.log("Evitamos una pérdida");
+                          }
+                        } else {
+                          console.log("La fila tiene secuencia automática, no se revertirá el valor.");
+                        }
+                        updateGlobalCounter(rowIndex, newValue);
+                      }
+                      try {
+                        const exists = await checkSubheadingExists(newValue);
+                        setSubheadingValidity(prev => {
+                          const newMap = new Map(prev);
+                          newMap.set(`${rowIndex}-${colIndex}`, exists);
+                          return newMap;
+                        });
+                        // Se evita renderizar aquí para optimizar, se hace al final
+                      } catch (error) {
+                        console.error('Error checking subheading:', error);
+                      }
+                    }
+              
+                    // Caso para la columna 2: validación de cantidades según orden de compra
+                    if (colIndex === 2) {
+                      const valueX = parseFloat(newValue);
+                      const value1 = parseFloat(hot.getDataAtCell(rowIndex, 0));
+                      const record = await selectByPurchaseOrder(orderNumber, value1);
+              
+                      if (isTable === "Create") {
+                        if (parseFloat(record[0]?.total_quantity) === (parseFloat(record[0]?.approved_quantity) + parseFloat(record[0]?.pending_quantity))) {
+                          batchChanges.push([rowIndex, colIndex, ""]);
+                          batchChanges.push([rowIndex, 1, ""]);
+                          batchChanges.push([rowIndex, 3, ""]);
+                          batchChanges.push([rowIndex, 4, ""]);
+                          batchChanges.push([rowIndex, 5, ""]);
+                        } else {
+                          if (valueX > parseFloat(record[0]?.total_quantity) || valueX < 1) {
+                            batchChanges.push([rowIndex, colIndex, ""]);
+                          }
                         }
                       } else {
-                        console.log("La fila tiene secuencia automática, no se revertirá el valor.");
-                      }
-            
-                      // Actualizar el contador global para la fila
-                      updateGlobalCounter(rowIndex, newValue);
-                    }
-                    try {
-                      const subheading = newValue;
-                      const exists = await checkSubheadingExists(subheading);
-          
-                      setSubheadingValidity(prev => {
-                        const newMap = new Map(prev);
-                        newMap.set(`${rowIndex}-${colIndex}`, exists);
-                        return newMap;
-                      });
-          
-                      hot.render();
-          
-                    } catch (error) {
-                      console.error('Error checking subheading:', error);
-                    }
-                  }
-          
-          
-                  if (colIndex === 2) {
-                    const valueX = parseFloat(newValue);
-                    const value1 = parseFloat(hot.getDataAtCell(rowIndex, 0));
-                    const record = await selectByPurchaseOrder(orderNumber,value1);
-
-                    
-          
-                    if(isTable === "Create"){
-                      if (parseFloat(record[0]?.total_quantity) === (parseFloat(record[0]?.approved_quantity) + parseFloat(record[0]?.pending_quantity))) {
-                        batchChanges.push([rowIndex, colIndex, ""]);
-                        batchChanges.push([rowIndex, 1, ""]);
-                        batchChanges.push([rowIndex, 3, ""]);
-                        batchChanges.push([rowIndex, 4, ""]);
-                        batchChanges.push([rowIndex, 5, ""]);
-                      }else{
-                        if (valueX > parseFloat(record[0]?.total_quantity) || valueX < 1) {
+                        const supplierdata = await selectSupplierData({ 
+                          page: 1, 
+                          limit: 1, 
+                          equals: { invoice_id: invoi, base_bill_id: record[0]?.base_bill_id }
+                        });
+                        if (valueX > parseFloat(supplierdata[0]?.billed_quantity) || valueX < 1) {
                           batchChanges.push([rowIndex, colIndex, ""]);
                         }
                       }
-                    }else{
-                      const supplierdata = await selectSupplierData({ page: 1, limit: 1, equals: {invoice_id: invoi, base_bill_id: record[0]?.base_bill_id}})
-
-                      if(valueX > parseFloat(supplierdata[0]?.billed_quantity) || valueX < 1){
-                        batchChanges.push([rowIndex, colIndex, ""]);
-                      }
                     }
-                  }
-          
-                  if ((colIndex === 2 || colIndex === 3)) {
-          
-                    const result = data[rowIndex][2] * parseFloat(String(data[rowIndex][3]).replace(/[$,]/g, ''));
-          
-                    batchChanges.push([rowIndex, 4,  String(formatMoney(result))]);
-                  }
-          
-                  if (colIndex === 0 && position != null && orderNumber.trim() !== '') {
-                    changesByRow.set(rowIndex, newValue?.toString().trim());
-                  }
-                }
-          
-                if (batchChanges.length > 0) {
-                  hot.batch(() => {
-                    batchChanges.forEach(([row, col, value]) => {
-                      hot.setDataAtCell(row, col, value);
-                    });
+              
+                    // Actualiza la columna 4 en función de las columnas 2 y 3
+                    if (colIndex === 2 || colIndex === 3) {
+                      const result = data[rowIndex][2] * parseFloat(String(data[rowIndex][3]).replace(/[$,]/g, ''));
+                      batchChanges.push([rowIndex, 4, String(formatMoney(result))]);
+                    }
+              
+                    // Caso para la columna 0: se guarda el valor modificado
+                    if (colIndex === 0 && position != null && orderNumber.trim() !== '') {
+                      changesByRow.set(rowIndex, newValue?.toString().trim());
+                    }
                   });
-                }
-          
-                for (const [row, cellValue] of changesByRow.entries()) {
-                  promises.push((async () => {
-                    try {
-                      const pos = data[row][0];
-          
-
-                      if(!orderNumber || !pos ) return
-                      if(orderNumber === "" || pos === "") return
-                      if (isNaN(orderNumber) || isNaN(pos)) {
-                        return; // Salir de la función si alguno no es un número
-                      }
-                      const records = await selectByPurchaseOrder(orderNumber,pos)
-          
-
-                      if (Number(records[0]?.item) === Number(pos)) {
-                        const { material_code, unit_price, total_quantity, pending_quantity, approved_quantity } = records[0];
-
-
-                        if (((parseFloat(approved_quantity) + parseFloat(pending_quantity) ) < parseFloat(total_quantity))) {
-
-                          try{
-                            const materialDetails = await getMaterial(material_code);
-                          const subheading = materialDetails?.subheading || '';
-          
-                          batchChanges.push([row, 1, material_code]);
-                          if (subheading) {
-                            batchChanges.push([row, 5, "**********"]);
-                            updateGlobalCounter(row, "**********");  // Agregar al contador global
-                          } else {
-                            batchChanges.push([row, 5, subheading]);
-                            updateGlobalCounter(row, subheading);  // Eliminar del contador global
+              
+                  // Espera a que se completen todas las validaciones de los cambios
+                  await Promise.all(changePromises);
+              
+                  // Procesa cambios por fila que requieren más validaciones y actualización de otros campos
+                  for (const [row, cellValue] of changesByRow.entries()) {
+                    promises.push((async () => {
+                      try {
+                        const pos = data[row][0];
+                        if (!orderNumber || !pos || orderNumber.trim() === "" || pos.trim() === "" || isNaN(orderNumber) || isNaN(pos)) return;
+                        const records = await selectByPurchaseOrder(orderNumber, pos);
+                        if (Number(records[0]?.item) === Number(pos)) {
+                          const { material_code, unit_price, total_quantity, pending_quantity, approved_quantity } = records[0];
+              
+                          if ((parseFloat(approved_quantity) + parseFloat(pending_quantity)) < parseFloat(total_quantity)) {
+                            try {
+                              const materialDetails = await getMaterial(material_code);
+                              const subheading = materialDetails?.subheading || '';
+                              batchChanges.push([row, 1, material_code]);
+                              if (subheading) {
+                                batchChanges.push([row, 5, "**********"]);
+                                updateGlobalCounter(row, "**********");
+                              } else {
+                                batchChanges.push([row, 5, subheading]);
+                                updateGlobalCounter(row, subheading);
+                              }
+                            } catch {
+                              console.error("El Material no existe");
+                            }
+              
+                            if (((realcurrency === "USD" || realcurrency === "EUR") && selectedCurrency === "COP") ||
+                                ((selectedCurrency === "USD" && realcurrency === "EUR") || (selectedCurrency === "EUR" && realcurrency === "USD"))) {
+                              batchChanges.push([row, 3, String(formatMoney((unit_price / 100) * sharedState.TRMCOP))]);
+                            } else if (realcurrency === "COP" && selectedCurrency !== "COP") {
+                              batchChanges.push([row, 3, String(formatMoney((unit_price / 100) * sharedState.TRMCOP))]);
+                            } else if (realcurrency === selectedCurrency) {
+                              batchChanges.push([row, 3, String(formatMoney(unit_price / 100))]);
+                            } else {
+                              batchChanges.push([row, 3, ""]);
+                              batchChanges.push([row, 4, ""]);
+                            }
+                            setfactunitprice(unit_price);
+                            setfacttotalvalue(cellValue * unit_price);
                           }
-                          }catch{
-                            console.error("El Material no existe")
-                          }
-          
-                          if(((realcurrency === "USD" || realcurrency === "EUR") && selectedCurrency === "COP" ) || ((selectedCurrency === "USD" && realcurrency === "EUR") || (selectedCurrency === "EUR" && realcurrency === "USD"))){
-
-                            batchChanges.push([row, 3, String(formatMoney((unit_price/100) * sharedState.TRMCOP))]);
-          
-                          }else if(realcurrency === "COP" && selectedCurrency !== "COP"){
-
-                            batchChanges.push([row, 3, String(formatMoney((unit_price/100) * sharedState.TRMCOP))]);
-          
-                          }else if(realcurrency === selectedCurrency){
-
-                            batchChanges.push([row, 3, String(formatMoney(unit_price/100))]);
-          
-                          }else{
-
-                            batchChanges.push([row, 3, ""]);
-                            batchChanges.push([row, 4, ""]);
-                          }
-          
-                          setfactunitprice(unit_price);
-                          setfacttotalvalue(cellValue * unit_price);
+                        } else {
+                          console.log(`No se encontró registro coincidente para la fila ${row}`);
                         }
-                      } else {
-                        console.log(`No matching record found for row ${row}`);
+                      } catch (error) {
+                        console.error(`Error procesando registros para la fila ${row}:`, error);
                       }
-                    } catch (error) {
-                      console.error(`Error processing records for row ${row}:`, error);
-                    }
-                  })());
-                }
-          
-                await Promise.all(promises);
-          
-                if (batchChanges.length > 0) {
-                  hot.batch(() => {
-                    batchChanges.forEach(([row, col, value]) => {
-                      hot.setDataAtCell(row, col, value);
+                    })());
+                  }
+              
+                  // Espera a que se completen las validaciones por fila
+                  await Promise.all(promises);
+              
+                  // Aplica todos los cambios en lote y renderiza una sola vez
+                  if (batchChanges.length > 0) {
+                    hot.batch(() => {
+                      batchChanges.forEach(([row, col, value]) => {
+                        hot.setDataAtCell(row, col, value);
+                      });
                     });
-                  });
-                }
-                setTimeout(() => {
+                  }
                   hot.render();
                   console.log("Tabla refrescada después de cambios.");
-                }, 500);
+                }, 300);
+              
+                paste();
               }
-            }, 300)} 
+              
+
+
+
+            }} 
 
 
 

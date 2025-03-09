@@ -5,10 +5,10 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Zofzf",
+  title: "Zoft",
   description: "El gestor de facturación que necesitas.",
   icons: {
-    icon: "/favicon.ico",  // Asegúrate de que el favicon está en la carpeta public
+    icon: "/favicon.ico",  
   },
 };
 

@@ -29,14 +29,24 @@ export const CreatelargeDomain = () => {
 
   useEffect(() => {
       const fetchSuppliers = async () => {
-          if (isFetchingRef.current) return; // Evita que se inicie un nuevo fetch si ya está en curso
-          isFetchingRef.current = true; // Marca el proceso como en curso
+          if (isFetchingRef.current) return; 
+          isFetchingRef.current = true; 
+          let data = {};
           try {
-              const data = await selectSuppliers({page: currentPage, limit: 8, equals: {}, orderBy: {column: "name", options: {ascending: true}}});
+
+            if(search){
+                data = await selectSuppliers({page: currentPage, limit: 8, equals: {}, orderBy: {column: "name", options: {ascending: true}}, search: search});
+            }else{
+                data = await selectSuppliers({page: currentPage, limit: 8, equals: {}, orderBy: {column: "name", options: {ascending: true}}});
+            }
               if (data) {
                   setSuppliers(data);
-
-                  const nextPageData = await selectSuppliers({page: currentPage + 1, limit: 8, equals: {}, orderBy: {column: "name", options: {ascending: true}}});
+                    let nextPageData = {}
+                  if(search){
+                    nextPageData = await selectSuppliers({page: currentPage + 1, limit: 8, equals: {}, orderBy: {column: "name", options: {ascending: true}}, search: search});
+                  }else{
+                    nextPageData = await selectSuppliers({page: currentPage + 1, limit: 8, equals: {}, orderBy: {column: "name", options: {ascending: true}}});
+                  }
                   setHasNextPage(nextPageData.length > 0);
               } else {
                   setSuppliers([]);
@@ -45,7 +55,7 @@ export const CreatelargeDomain = () => {
           } catch (error) {
               console.error("Error fetching suppliers:", error);
           } finally {
-              isFetchingRef.current = false; // Marca el proceso como terminado
+              isFetchingRef.current = false; 
           }
       };
 

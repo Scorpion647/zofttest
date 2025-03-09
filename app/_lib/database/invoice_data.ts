@@ -79,7 +79,7 @@ export async function selectInvoice_data(
 
 export async function insertInvoice(
   invoice: TablesInsert<"invoice_data">,
-  files: FileList,
+  files?: FileList,
 ) {
   const { data: invoiceData, error } = await supabase
     .from("invoice_data")
@@ -91,12 +91,14 @@ export async function insertInvoice(
   }
 
   if (!files) {
-    return invoiceData;
+    return { invoiceData, insertDocResponse: null }; // Retorna invoiceData aunque no haya archivos
   }
 
   const { invoice_id, supplier_id } = invoiceData[0];
 
-  return await insertInvoiceDoc(supplier_id, invoice_id, files);
+  const insertDocResponse = await insertInvoiceDoc(supplier_id, invoice_id, files);
+
+  return { invoiceData, insertDocResponse };
 }
 
 export async function insertInvoiceDoc(
@@ -117,8 +119,8 @@ export async function insertInvoiceDoc(
       .from("invoice_docs")
       .insert({
         invoice_id,
-      })
-      .returns<Tables<"invoice_docs">[]>();
+      }).select()
+      
 
     if (tableError) {
       storageErrors.push(Error(tableError.message));

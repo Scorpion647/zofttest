@@ -94,18 +94,16 @@ SELECT
   );
 
 
-CREATE POLICY "Admin can insert invoice docs" ON public.invoice_docs FOR
-SELECT
-  TO authenticated USING (
-    EXISTS (
-      SELECT
-        1
-      FROM
-        public.invoice_data d
-      WHERE
-        d.invoice_id = invoice_id
-    )
-  );
+CREATE POLICY "Admin can insert invoice docs" ON public.invoice_docs
+FOR INSERT
+TO authenticated
+WITH CHECK (
+  EXISTS (
+    SELECT 1
+    FROM public.invoice_data d
+    WHERE d.invoice_id = invoice_id
+  )
+);
 
 
 CREATE POLICY "Admin can update invoice docs" ON public.invoice_docs FOR
