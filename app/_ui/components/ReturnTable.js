@@ -217,12 +217,7 @@ const ReturnTable = ({ suppliers, volver }) => {
 
   
   const [mergeCellsConfig, setMergeCellsConfig] = useState([]);
-  useEffect(() => {
-    const initialMergeCells = getMergeCells();
-    setMergeCellsConfig(initialMergeCells);
 
-
-  }, [Data]);
 
   const getMergeCells = () => {
     if (hotTableRef.current !== null && hotTableRef.current.hotInstance !== undefined) {
@@ -356,19 +351,24 @@ return "approved"
 
 };
 
+const [existfile,setexistfile] = useState("")
 
   const fetchData = async () => {
     setIsLoading(true)
+    const now = new Date();
     let data = []
     const active = await selectSingleInvoice(suppliers)
+
     if(status !== ""){
-      await updateInvoice({invoice_id: suppliers, state: status, feedback: textValue })
+      console.log("Estamos aqui")
+      await updateInvoice({invoice_id: suppliers, state: status, feedback: textValue, updated_at: now.toISOString().replace('T', ' ').replace('Z', '+00')})
     }
     if(FMM === ""){
       setFMM(active.fmm)
     }
     if(FMM !== "" && active.fmm !== FMM){
-      await updateInvoice({invoice_id: suppliers, fmm: FMM })
+      console.log("Estamos alla")
+      await updateInvoice({invoice_id: suppliers, fmm: FMM, updated_at: now.toISOString().replace('T', ' ').replace('Z', '+00')})
     }
 
   if(status === "approved" || (status === "" && active.state === "approved")){
@@ -376,6 +376,18 @@ return "approved"
   }else{
     setisapproved(false)
   }
+
+  if(existfile === ""){
+
+    if(active.invoice_docs[0]?.doc_id){
+
+      setexistfile("Si")
+    }else{
+
+      setexistfile("No")
+    }
+  }
+
 
 
     try{
@@ -477,10 +489,12 @@ const data4 = Typematerial(type);
         if(numbeer > 0){
           sendEmail(suppliers,((status === "approved" ? "Aprobado" : (status === "pending" ? "Pendiente" : "Rechazado") )),(status === "rejected" ? textValue : undefined),(status === "approved" ?  FMM : undefined))
           if(status !== "rejected" && (active.feedback !== "" && active.feedback !== null)){
-            await updateInvoice({invoice_id: suppliers, feedback: "" })
+            await updateInvoice({invoice_id: suppliers, feedback: "" , updated_at: now.toISOString().replace('T', ' ').replace('Z', '+00')})
+            console.log("aqui")
           }
           if(status !== "approved" && (FMM !== "" && active.fmm !== FMM)){
-            await updateInvoice({invoice_id: suppliers, fmm: "" })
+            console.log("alla")
+            await updateInvoice({invoice_id: suppliers, fmm: "", updated_at: now.toISOString().replace('T', ' ').replace('Z', '+00') })
           }
           setTextValue("")
         }
@@ -679,8 +693,9 @@ console.log(suppliers)
 const invo = await selectSingleInvoice(suppliers)
 
 try{
- const doc = await getDocDownloadLink(invo.invoice_docs[0],invo.supplier_id)
- console.log(doc)
+  console.log(invo.invoice_docs)
+ const doc = await getDocDownloadLink(invo.invoice_docs[invo.invoice_docs.length - 1],invo.supplier_id)
+ window.open(doc,"_blank")
 }catch(error){
   console.error(error)
 }
@@ -799,8 +814,8 @@ const handleChangeFMM = useCallback((e) => {
                          <EditIcon/> 
                         </Button>
                         </Tooltip>
-                        <Tooltip size="md" label="Descargar factura">
-                        <Button  onClick={Delete} bgColor="#F1D803" textColor="black">
+                        <Tooltip size="md" label={(existfile !== "Si" ? "Factura no disponible" : "Descargar factura")}>
+                        <Button isDisabled={existfile !== "Si"}  onClick={Delete} bgColor="#F1D803" textColor="black">
                          <Icon as={GrDocumentPdf} />
                         </Button>
                         </Tooltip>
@@ -922,7 +937,7 @@ const handleChangeFMM = useCallback((e) => {
                         ref={hotTableRef}
                         rowHeaders={true}
                         stretchH="all"
-                        mergeCells={mergeCellsConfig}
+                        //mergeCells={mergeCellsConfig}
                         
                         //beforeChange={handleAfterChange}
                         fixedColumnsStart={3}

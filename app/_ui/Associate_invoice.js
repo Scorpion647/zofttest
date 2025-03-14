@@ -15,7 +15,7 @@ import { SearchIcon, ArrowBackIcon, EditIcon, InfoOutlineIcon } from "@chakra-ui
 import Handsontable from 'handsontable';
 import { HotTable } from '@handsontable/react';
 import 'handsontable/dist/handsontable.full.css';
-import { getRecords, getSupplier, insertRecordInfo, getRecord, updateRecord, checkSubheadingExists, getInvo, getSuplierInvoice, getRecordInfo } from '@/app/_lib/database/service';
+import { getRecords, getSupplier, insertRecordInfo, getRecord, updateRecord, checkSubheadingExists, getInvo, getSuplierInvoice, getRecordInfo, getMaterial } from '@/app/_lib/database/service';
 import debounce from "lodash/debounce";
 import { deleteSupplierData, insertSupplierData, selectSingleSupplierData, selectSupplierData, selectSupplierDataByInvoiceID, updateSupplierData } from "../_lib/database/supplier_data";
 
@@ -25,7 +25,7 @@ import { selectSingleSupplier } from "../_lib/database/suppliers";
 import { selectSingleSupplierEmployee } from "../_lib/database/supplier_employee";
 import { getData } from "../_lib/database/app_data";
 import { selectBills, selectByPurchaseOrder, selectSingleBill } from "../_lib/database/base_bills";
-import { insertInvoice, insertInvoiceDoc, selectSingleInvoice, updateInvoice } from "../_lib/database/invoice_data";
+import { deleteInvoiceDocs, insertInvoice, insertInvoiceDoc, selectInvoice_data, selectSingleInvoice, updateInvoice } from "../_lib/database/invoice_data";
 import { match } from "assert";
 import { updateMaterial, insertMaterial, selectMaterials } from "../_lib/database/materials";
 import { GrDocumentPdf } from "react-icons/gr";
@@ -90,194 +90,147 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
   const pruebas = async () => {
     let tfactura = 0;
     let Copia = [];
-    let cantidad = 0
-    let trmcop = 0
+    let cantidad = 0;
+    let trmcop = 0;
+    let result = []; // Aquí se almacenará el arreglo final de filas para la tabla
     try {
       const hot = hotTableRef.current.hotInstance;
       if (!hot || hot.isDestroyed) return;
-      setIsLoading2(true)
-
+      setIsLoading2(true);
+  
       const invoice = await selectSingleInvoice(invoi);
-
       // Manejo de estados inicial
-      invoice.state !== "approved"
-      setisActive((invoice.state === "approved" ? false : (invoice.state === "pending" ? false : true)));
-
+      setisActive(invoice.state === "approved" ? false : (invoice.state === "pending" ? false : true));
       setButton(invoice.state === "approved" ? false : (invoice.state === "pending" ? true : false));
-
-
+  
       // Obtén los datos una sola vez
       const Data = await getSuplierInvoice(1, 200, invoi);
-
       setcopia(Data);
-
+  
       let total = 0;
       let bultos = 0;
       let purchase = "";
       let proveedor = "";
       let cont = 0;
-      let groupedData = {};
-      let currency = "";
-
-
       const changes = [];
-
+  
       // Procesar las facturas en paralelo
-
       const billPromises = Data.map(async (datas) => {
-
         if (datas && datas.base_bill_id) {
-
           try {
-
             const bill = await selectSingleBill(datas.base_bill_id);
-
             // Procesar la primera factura y evitar llamadas repetitivas
             if (!purchase) {
-
               purchase = bill[0]?.purchase_order || "";
               const pro = await selectSingleSupplier(bill[0]?.supplier_id);
-              setrealcurrency(bill[0]?.currency)
-              updateSharedState('TRMCOP', (datas.billed_currency !== bill[0]?.currency ? (parseFloat((datas.billed_unit_price / bill[0]?.unit_price).toFixed(10))) : undefined))
-              trmcop = (datas.billed_currency !== bill[0]?.currency ? (parseFloat((datas.billed_unit_price / bill[0]?.unit_price).toFixed(10))) : undefined)
-
+              setrealcurrency(bill[0]?.currency);
+              updateSharedState(
+                'TRMCOP',
+                datas.billed_currency !== bill[0]?.currency
+                  ? parseFloat((datas.billed_unit_price / bill[0]?.unit_price).toFixed(10))
+                  : undefined
+              );
+              trmcop = datas.billed_currency !== bill[0]?.currency
+                ? parseFloat((datas.billed_unit_price / bill[0]?.unit_price).toFixed(10))
+                : undefined;
+              const cachebills = await selectBills({ limit: 300, page: 1, equals: { purchase_order: purchase } });
+              setshoworder(purchase);
+              setOrderNumber(purchase);
+              setInitialRecords(cachebills);
+              // Actualizar la data mediante mutate
+              mutate(cachebills, false);
               proveedor = pro?.name || "";
-
-
-              const trmCondition = datas.billed_unit_price !== bill[0]?.unit_price;
+              updateSharedState('proveedor', proveedor);
+  
               updateSharedState('TRM', (datas.billed_currency === "COP" ? false : true));
-              setSelectedCurrency(datas.billed_currency)
-
-
-
+              setSelectedCurrency(datas.billed_currency);
             }
-
+  
             // Actualización de campos
             updateSharedState('nofactura', datas.bill_number);
-
             total += datas.gross_weight || 0;
             bultos += datas.packages || 0;
-
-            // Guardar cambios en la tabla
-
-            changes.push([cont, 0, bill[0].item]);
-
-            changes.push([cont, 2, datas.billed_quantity]);
-
-
-
+  
+            // Se guarda la información del registro: el primer cambio (columna 0, ítem) y el segundo (columna 2, cantidad)
+            changes.push({
+              row: cont,
+              item: bill[0].item,
+              quantity: datas.billed_quantity
+            });
             cont++;
           } catch (err) {
             console.error('Error fetching bill for base_bill_id:', datas.base_bill_id, err);
           }
         }
       });
-
-
+  
       await Promise.all(billPromises);
-
-
-
-      cantidad = Math.ceil(cont / 10)
-
-
-      // Actualización final del estado
-
-      updateSharedState('pesototal', parseFloat(total.toFixed(2)));
-
-      updateSharedState('bultos', parseFloat(bultos.toFixed(0)));
-
-      updateSharedState('proveedor', proveedor);
-
-      setOrderNumber(purchase);
-
-
-      // Crear pares y mantener la relación
-      const grouped = [];
-
-      for (let i = 0; i < changes.length; i += 2) {
-        const dominant = changes[i]; // Dominante
-        const companion = changes[i + 1]; // Acompañante
-        grouped.push({
-          dominant: dominant,
-          companion: companion
-        });
-      }
-
-
-      // Paso 2: Ordenar los dominantes por su valor
-
-      grouped.sort((a, b) => a.dominant[2] - b.dominant[2]);
-
-      // Paso 3: Asignar nuevas filas
-      const result = [];
-      grouped.forEach((pair, index) => {
-        const newRow = index; // Nueva fila basada en el índice
-        const newDominant = [newRow, pair.dominant[1], pair.dominant[2]];
-        const newCompanion = [newRow, pair.companion[1], pair.companion[2]];
-
-        result.push(newDominant);
-        result.push(newCompanion);
+  
+      cantidad = Math.ceil(cont / 10);
+  
+      // Agrupar y ordenar la información según el ítem (o según lo que necesites)
+      const grouped = changes.sort((a, b) => {
+        if (a.item < b.item) return -1;
+        if (a.item > b.item) return 1;
+        return 0;
       });
-
-
-      // Actualizar la tabla de Handsontable en batch
-      if (result.length > 0 && hot && !hot.isDestroyed) {
-
+  
+      // Crear un arreglo de filas combinando cada objeto en una única fila.
+      // Se asume que la columna 0 es para el ítem, la columna 1 se deja vacía y la columna 2 es para la cantidad.
+      result = grouped.map((entry) => {
+        return [
+          entry.item,    // Columna 0: el ítem
+          "",            // Columna 1: vacío (puedes ajustar si necesitas otro dato)
+          entry.quantity // Columna 2: la cantidad
+        ];
+      });
+  
+      // Rellenar con filas vacías hasta que haya 200 filas en total
+      while (result.length < 200) {
+        result.push(["", "", ""]);
+      }
+  
+      // Actualizar la tabla de Handsontable de forma eficiente
+      if (hot && !hot.isDestroyed) {
+        hot.batch(() => {
+          hot.loadData(result);
+        });
+        // Actualizar el estado que se utiliza en la propiedad data de la tabla para conservar la data
+        setData(result);
         await new Promise((resolve) => {
-          hot.batch(() => {
-            hot.setDataAtCell(result);
-          });
-
-          // Usa el hook `afterChange` para confirmar los cambios
-          hot.addHookOnce('afterChange', (changes, source) => {
-            if (source !== 'loadData') {
-              console.log("Datos actualizados en la tabla.");
-              resolve();
-            }
+          hot.addHookOnce('afterLoadData', () => {
+            console.log("Datos cargados en la tabla.");
+            resolve();
           });
         });
-
-        /*// Usa el hook `afterLoadData` para confirmar cuando los datos han sido recargados
-        await new Promise((resolve) => {
-            hot.addHookOnce('afterLoadData', () => {
-                console.log("Datos cargados en la tabla.");
-                resolve();
-            });
-        });*/
-
-
-
-
-        setTimeout(() => {
-          hot.loadData(hot.getSourceData());  // Recarga usando la fuente original de datos
-          console.log("Datos recargados forzadamente.");
-        }, 200);
-
-
       } else {
         console.log("No hay cambios para aplicar o la instancia de Handsontable no está disponible.");
       }
+  
+      // Actualización intermedia de estados
+      updateSharedState('pesototal', parseFloat(total.toFixed(2)));
+      updateSharedState('bultos', parseFloat(bultos.toFixed(0)));
     } catch (error) {
       console.error('Error in pruebas function:', error);
     } finally {
-      const hot = hotTableRef.current.hotInstance;
-      if (!hot || hot.isDestroyed) return;
-
-      setTimeout(() => {
-        updateSharedState('TRMCOP', trmcop)
-        const totalSum = data.reduce((sum, row) => {
+      // Usar la data actual (result o state data) para calcular totales finales
+      const currentData = result.length > 0 ? result : data;
+      updateSharedState('TRMCOP', trmcop);
+      const totalSum = currentData.reduce((sum, row) => {
         const unip = parseFloat(String(row[3]).replace(/[$,]/g, '')) || 0;
         const can = parseFloat(row[2]) || 0;
         return unip > 0 && can > 0 ? sum + (unip * can) : sum;
       }, 0);
       updateSharedState('totalfactura', formatMoney(totalSum.toFixed(2)));
-        setIsLoading2(false)
-      }, ((7 * cantidad) * 1000));
-
-
     }
   };
+  
+  
+  
+  
+  
+  
+  
 
 
 
@@ -491,58 +444,67 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
   const [initialRecords, setInitialRecords] = useState([]);
   const [materialResults, setMaterialResults] = useState([]);
   const [showorder,setshoworder] = useState("")
+  const [edittable,setedittable] = useState(false)
+
+  const hasFetchedMaterials = useRef(false);
 
   // SWR usa como key `purchaseOrderRecords-${orderNumber}` y el fetcher devuelve initialRecords
   const { data: records, error, mutate } = useSWR(
     orderNumber ? `purchaseOrderRecords-${orderNumber}` : null,
     () => Promise.resolve(initialRecords),
     {
-      fallbackData: initialRecords,
       revalidateOnFocus: false,
     }
   );
 
-  // Verifica los cambios en records
   useEffect(() => {
-    if (records && records.length > 0) {
-      Promise.all(
-        records.map(async (record) => {
-          try {
-            const result = await selectMaterials({
-              limit: 1,
-              page: 1,
-              equals: { material_code: record.material_code },
-            });
-            return {
-              material_code: record.material_code,
-              data: result ? result : '', // Si existe, guarda el dato; de lo contrario, espacio en blanco.
-            };
-          } catch (error) {
-            console.error(`Error fetching details for ${record.material_code}:`, error);
-            return { material_code: record.material_code, data: undefined };
-          }
-        })
-      ).then((results) => {
-        setMaterialResults(results);
-        console.log("Resultados de Material:", results);
-      });
-    } else {
-      // Si no hay records, limpia materialResults.
+    // Si no hay registros o ya se procesó, salimos
+    if (!records || records.length === 0) {
       setMaterialResults([]);
       console.log("No hay registros, materialResults limpiado.");
+      setedittable(false);
+      return;
     }
+    if (hasFetchedMaterials.current) return;
+
+    hasFetchedMaterials.current = true; // Evitamos volver a ejecutar este bloque
+
+    // Procesamos cada registro de forma secuencial para evitar saturar el sistema
+    (async () => {
+      const results = [];
+      for (const record of records) {
+        try {
+          const result = await selectMaterials({
+            limit: 1,
+            page: 1,
+            equals: { material_code: record.material_code },
+          });
+          results.push({
+            material_code: record.material_code,
+            data: result || "", // Si existe, guarda el dato; de lo contrario, cadena vacía.
+          });
+        } catch (error) {
+          results.push({ material_code: record.material_code, data: undefined });
+        }
+      }
+      setMaterialResults(results);
+      console.log("Resultados de Material:", results);
+      setedittable(true);
+    })();
   }, [records]);
+  
 
   const handleOrderNumberChange = async (e) => {
     const order = e.target.value;
     setshoworder(order)
+    hasFetchedMaterials.current = false;
 
     try {
       // Obtén los registros asociados al purchase_order
       const record = await selectBills({ limit: 300, page: 1, equals: { purchase_order: order } });
       console.log("Orden: ",order)
-      console.log("Orden traida: ",record[0].purchase_order)
-      if (record[0].purchase_order === order) {
+      console.log("Orden traida: ",record[0]?.purchase_order)
+      if (record[0]?.purchase_order === order) {
         setOrderNumber(order);
         
         const supplier = await getSupplier(record[0].supplier_id);
@@ -559,6 +521,8 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
           updateSharedState('proveedor', "");
           setrealcurrency("");
         }
+      }else{
+        updateSharedState('proveedor', "");
       }
     } catch (error) {
       console.error("Error fetching records", error);
@@ -690,9 +654,9 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
     }
 
     debounceTimeoutRef1.current = setTimeout(() => {
-      if (orderNumber) {
+      if (showorder) {
 
-        if (orderNumber.trim() !== '') {
+        if (showorder.trim() !== '') {
           setIsLoading(true);
 
           getRecords(1, 40000)
@@ -701,7 +665,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
                 const matchingRecords = data
                   .map(record => record.purchase_order)
                   .filter((value, index, self) =>
-                    self.indexOf(value) === index && value.includes(orderNumber)
+                    self.indexOf(value) === index && value.includes(showorder)
                   );
 
                 if (matchingRecords.length > 4) {
@@ -730,7 +694,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
         clearTimeout(debounceTimeoutRef1.current);
       }
     };
-  }, [orderNumber]);
+  }, [showorder]);
 
 
 
@@ -828,6 +792,10 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
         });
       });
     }
+
+    if(isTable !== "Create" && isLoading2 === true){
+      setIsLoading2(false);
+    }
   }, 300);
 
 
@@ -873,16 +841,22 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
   const UpdateData = async () => {
     const userConfirmed = window.confirm('¿Estás seguro de que deseas realizar la siguiente asociación de factura?');
     if (!userConfirmed) return;
-
+  
     const hotInstance = hotTableRef.current?.hotInstance;
     if (!hotInstance) return console.error('No hay instancia de Handsontable disponible.');
-
+  
     // Validaciones necesarias
-    if (!sharedState.pesototal || !sharedState.bultos || !sharedState.nofactura || (realcurrency !== selectedCurrency && (!sharedState.TRMCOP || sharedState.TRMCOP <= 0))) {
+    if (
+      !sharedState.pesototal ||
+      !sharedState.bultos ||
+      !sharedState.nofactura ||
+      (realcurrency !== selectedCurrency && (!sharedState.TRMCOP || sharedState.TRMCOP <= 0))
+    ) {
       window.alert('Error, debe llenar todos los campos requeridos.');
       return;
     }
-
+    console.log("Estamos en update");
+  
     const tableData = hotInstance.getData();
     const records = [];
     const update = [];
@@ -897,84 +871,98 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
     let currency = "";
     let unit = 0;
     let total = 0;
-
+  
+    // Bandera para actualizar el documento solo una vez
+    let invoiceDocUpdated = false;
+  
     for (const [index, row] of tableData.entries()) {
       const isEmptyRow = row.every(cell => cell === null || cell === '' || cell === undefined);
       if (isEmptyRow) continue;
-
+  
       const [record_position, material_code, billed_quantity, bill_number, , subheading] = row;
-
+  
       if (record_position && material_code && bill_number && billed_quantity && subheading) {
         const prue = await checkSubheadingExists(subheading);
         if (String(subheading) !== "**********" && (String(subheading).length !== 10 || prue !== true)) {
           window.alert('Error, una subpartida ingresada no es valida, por favor revise y vuelva a intentar');
           return;
         }
-
+  
         hasCompleteRow = true;
         const pos = hotInstance.getDataAtCell(index, 0);
-
-
-        const matchedRecord = records.find(r => Number(r.item) === Number(pos) && (r.purchase_order) === orderNumber);
-
-
-        if (!matchedRecord) {
+  
+        const matchedRecord = await selectBills({ limit: 1, page: 1, equals: { purchase_order: orderNumber, item: pos } });
+        if (!matchedRecord[0]?.base_bill_id) {
           console.error(`No se encontró el registro para la posición ${pos}`);
           continue;
         }
-
+  
         if (currency === "") {
-          currency = matchedRecord.currency
+          currency = matchedRecord[0]?.currency;
         }
-
-        unit = matchedRecord.unit_price / 100
-        total = (matchedRecord.unit_price / 100) * parseFloat(hotInstance.getDataAtCell(index, 2))
-
-        const { base_bill_id, unit_price, material_code, total_quantity, supplier_id } = matchedRecord;
-
-        // Insertar la factura si aún no existe
-        if (!id) {
-          const user = await userData();
-          email = user.data.user.email;
-          const sup = await selectSingleSupplier(supplier_id);
-          suname = sup.name;
-          const newInvoice = await insertInvoice({ supplier_id, state: "pending" });
-          id = newInvoice;
+  
+        unit = matchedRecord[0]?.unit_price / 100;
+        total = (matchedRecord[0]?.unit_price / 100) * parseFloat(hotInstance.getDataAtCell(index, 2));
+  
+        const { base_bill_id, supplier_id } = matchedRecord[0];
+  
+        // Actualizar la factura (documento) solo una vez, fuera de la repetición
+        if (selectedFile !== null && !invoiceDocUpdated) {
+          try {
+            const invoices = await selectInvoice_data({ limit: 1, page: 1, equals: { invoice_id: id } });
+            console.log("HOLA1");
+            const deletedoc = await deleteInvoiceDocs(invoices[0]?.invoice_docs[0], supplier_id);
+            console.log("HOLA2");
+            const doc = await insertInvoiceDoc(supplier_id, id, selectedFile);
+            console.log("HOLA3");
+            invoiceDocUpdated = true;
+          } catch (error) {
+            console.error('Error completo:', error);
+            if (error.message) console.error('Mensaje de error:', error.message);
+            if (error.details) console.error('Detalles del error:', error.details);
+          }
         }
-
+  
         // Crear o actualizar materiales si se encuentra una subpartida
         if (subheading !== "**********") {
-
-          const valida = await selectMaterials({limit: 1,page: 1, equals: {material_code: material_code}});
+          const valida = await selectMaterials({ limit: 1, page: 1, equals: { material_code } });
           if (valida[0]?.material_code === material_code) {
             await updateMaterial({ material_code, subheading });
           } else {
             await insertMaterial({ material_code, subheading });
           }
         }
-
-
-
-
-
-
-
-
-        const factunitprice = (currency === selectedCurrency ? unit : parseFloat(String(hotInstance.getDataAtCell(index, 3)).replace(/[$,]/g, '')));
-        const totalprice = (currency === selectedCurrency ? total : (factunitprice * parseFloat(hotInstance.getDataAtCell(index, 2))).toFixed(2));
-        const gross = ((((hotInstance.getDataAtCell(index, 2) / sharedState.columnSum) * sharedState.pesototal))).toFixed(9);
-        const packag = ((((hotInstance.getDataAtCell(index, 2) / sharedState.columnSum) * sharedState.bultos))).toFixed(9);
-        let conver = 0
-        let trm = 0
-
+  
+        const factunitprice =
+          currency === selectedCurrency
+            ? unit
+            : parseFloat(String(hotInstance.getDataAtCell(index, 3)).replace(/[$,]/g, ''));
+        const totalprice =
+          currency === selectedCurrency
+            ? total
+            : (factunitprice * parseFloat(hotInstance.getDataAtCell(index, 2))).toFixed(2);
+        const gross = (
+          (hotInstance.getDataAtCell(index, 2) / sharedState.columnSum) *
+          sharedState.pesototal
+        ).toFixed(9);
+        const packag = (
+          (hotInstance.getDataAtCell(index, 2) / sharedState.columnSum) *
+          sharedState.bultos
+        ).toFixed(9);
+        let conver = 0;
+        let trm = 0;
+  
         if (sharedState.TRM) {
-          trm = selectedCurrency === "USD" ? await getExchangeRate("trm_usd") : await getExchangeRate("trm_eur");
+          trm =
+            selectedCurrency === "USD"
+              ? await getExchangeRate("trm_usd")
+              : await getExchangeRate("trm_eur");
           conver = selectedCurrency === "USD" ? "USD" : "EUR";
         } else {
           trm = await getExchangeRate("trm_usd");
           conver = "COP";
         }
-
+  
         // Manejo de posiciones duplicadas
         if (seenPositions.has(record_position)) {
           if (!duplicatePositions.has(record_position)) {
@@ -983,15 +971,15 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
           duplicatePositions.get(record_position).push(index + 1);
         } else {
           seenPositions.add(record_position);
-
+  
           const objeto = copia.find(objeto => objeto.base_bill_id === base_bill_id);
-
+  
           // Filtrar eliminaciones
           const nuevoArray = copiaa.filter(objeto => objeto.base_bill_id !== base_bill_id);
           if (nuevoArray.length !== copiaa.length) {
             copiaa = nuevoArray;
           }
-
+  
           // Construir el registro
           const record = {
             base_bill_id,
@@ -1006,10 +994,9 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
             invoice_id: id,
             modified_at: new Date().toISOString()
           };
-
+  
           // Actualizar si ya existe, crear si es nuevo
           if (objeto) {
-
             const up = {
               bill_number: String(sharedState.nofactura),
               supplier_data_id: objeto.supplier_data_id,
@@ -1021,9 +1008,8 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
               packages: parseFloat(packag),
               billed_currency: conver,
               modified_at: new Date().toISOString()
-            }
+            };
             update.push(up);
-
           } else {
             records.push(record);
           }
@@ -1032,17 +1018,17 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
         incompleteRows.push(index + 1);
       }
     }
-
+  
     if (incompleteRows.length > 0) {
       alert(`ERROR: revise las siguientes filas: ${incompleteRows.join(', ')}`);
       return;
     }
-
+  
     if (!hasCompleteRow) {
       alert('Debe haber al menos una fila completa.');
       return;
     }
-
+  
     if (duplicatePositions.size > 0) {
       const duplicatesMsg = Array.from(duplicatePositions.entries())
         .map(([pos, indices]) => `Posición ${pos}: Fila(s) ${indices.join(', ')}`)
@@ -1051,37 +1037,30 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
       return;
     }
 
-    // Procesar eliminaciones, actualizaciones y creaciones
-    try {
-      // Eliminar los registros que ya no están presentes
-
-
-      // Si hay elementos que realmente deben eliminarse, entonces realizar la operación
-      if (copiaa.length > 0) {
-        for (const objeto of copiaa) {
-          if (Object.keys(objeto).length > 0) {
-            try {
-              console.log("eliminamos uno sesupone, este es su supplier_data: ", objeto.supplier_data_id)
-              await deleteSupplierData(objeto.supplier_data_id);
-            } catch (error) {
-              console.error('Error en la eliminación:', error);
-            }
+    if (copiaa.length > 0) {
+      for (const objeto of copiaa) {
+        if (Object.keys(objeto).length > 0) {
+          try {
+            console.log("eliminamos uno sesupone, este es su supplier_data: ", objeto.supplier_data_id)
+            await deleteSupplierData(objeto.supplier_data_id);
+          } catch (error) {
+            console.error('Error en la eliminación:', error);
           }
         }
       }
-
-
+    }
+  
+    // Procesar eliminaciones, actualizaciones y creaciones
+    try {
       if (records.length > 0) {
         await insertSupplierData(records);
       }
-
-
+  
       if (update.length > 0) {
         await updateSupplierData(update);
       }
-
-
-      await updateInvoice({ invoice_id: id, state: "pending", feedback: "" });
+      const now = new Date();
+      await updateInvoice({ invoice_id: id, state: "pending", feedback: "" , updated_at: now.toISOString().replace('T', ' ').replace('Z', '+00')});
       alert('Registros enviados correctamente.');
       setisTable(false);
     } catch (error) {
@@ -1089,7 +1068,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
       alert('Error al enviar los registros.');
     }
   };
-
+  
 
 
 
@@ -1103,12 +1082,12 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
 
 
   const columns = [
-    { data: 0, readOnly: (!isActive ? true : false), title: 'Posicion' },
+    { data: 0, readOnly: (!isActive ? true : (edittable === true ? false : true)), title: 'Posicion' },
     { data: 1, readOnly: true, title: 'Codigo de Material' },
-    { data: 2, readOnly: (!isActive ? true : false), title: 'Cantidad' },
+    { data: 2, readOnly: (!isActive ? true : (edittable === true ? false : true)), title: 'Cantidad' },
     { data: 3, readOnly: true, title: 'Precio Unitario' },
     { data: 4, readOnly: true, title: 'Valor Neto' },
-    { data: 5, readOnly: (!isActive ? true : false), title: 'Subpartida ' },
+    { data: 5, readOnly: (!isActive ? true : (edittable === true ? false : true)), title: 'Subpartida ' },
   ];
 
   const handleCellDoubleClick = async (event, coords, TD) => {
@@ -1154,9 +1133,9 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
 
           
           const supplierdata = await selectSupplierData({page: 1, limit: 1, equals: { invoice_id: invoi, base_bill_id: matchedRecord.base_bill_id}}) 
-          updateSharedState('cantidadoc', (supplierdata[0]?.billed_quantity));
+          updateSharedState('cantidadoc', ((total_quantity - (approved_quantity + pending_quantity))  + supplierdata[0]?.billed_quantity));
           updateSharedState('totalOC', (total_quantity));
-          updateSharedState('OCusada', ((approved_quantity + pending_quantity) - supplierdata[0]?.billed_quantity));
+          updateSharedState('OCusada', ((approved_quantity + pending_quantity ) - supplierdata[0]?.billed_quantity));
         }
         if (realcurrency === "COP") {
           let valor = await getExchangeRate("trm_usd")
@@ -1369,7 +1348,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
           suname = sup.name
           
           
-
+      
           if(selectedFile !== null){
             try{
               const newInvoice = await insertInvoice({ supplier_id: supplier_id, state: "pending"},selectedFile);
@@ -1392,10 +1371,13 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
         }
 
         if (subheading !== "**********") {
-          const exists = updatematerials.some(item => item.target === material_code);
-          if (!exists) {
-            const valida = await selectMaterials({limit: 1,page: 1, equals: {material_code: material_code}});
-            if (valida[0]?.material_code !== undefined) {
+
+
+            const exists = updatematerials.some(item => item.target === material_code);
+            const exists2 = insertmaterials.some(item => item.material_code === material_code);
+          if (!exists && !exists2) {
+            const valida = await getMaterial(material_code);
+            if (valida?.material_code=== material_code) {
 
               const material = {
                 target: material_code,
@@ -1414,6 +1396,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
               insertmaterials.push(material)
             }
           }
+          
         }
 
         const factunitprice = (currency === selectedCurrency ? unit : parseFloat(String(hotInstance.getDataAtCell(index, 3)).replace(/[$,]/g, '')));
@@ -1586,7 +1569,10 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
     const file = event.target.files?.[0];
     if (file && file.type === "application/pdf") {
       // event.target.files ya es un FileList, se lo pasamos directamente
+      console.log("Se guardo algo")
+      console.log("Primer Estado: ", selectedFile)
       setSelectedFile(event.target.files);
+      console.log("Segundo Estado: ", selectedFile)
       setIsUploaded(true);
     } else {
       alert("Por favor, selecciona un archivo PDF.");
@@ -1655,7 +1641,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
                 color="black"
                 isDisabled={isLoading}
               >
-                <Button ref={buttonRef} isLoading={isLoading} onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)} colorScheme='teal' backgroundColor='#F1D803'>
+                <Button ref={buttonRef} isLoading={isLoading || (!isLoading && !edittable && sharedState.proveedor !== "")} onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)} colorScheme='teal' backgroundColor='#F1D803'>
                   <SearchIcon w={5} h={5} color='black' />
                 </Button>
               </Tooltip>
@@ -2175,7 +2161,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
           limit: 1,
           equals: { invoice_id: invoi, base_bill_id: record[0]?.base_bill_id }
         });
-        if (valueX > parseFloat(supplierdata[0]?.billed_quantity) || valueX < 1) {
+        if (valueX > ((record[0]?.total_quantity - (record[0]?.approved_quantity + record[0]?.pending_quantity) ) + supplierdata[0]?.billed_quantity) || valueX < 1) {
           hot.setDataAtCell(rowIndex, colIndex, "");
         }
       }
@@ -2217,7 +2203,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
       const records = await selectByPurchaseOrder(orderNumber, pos);
       if (Number(records[0]?.item) === Number(pos)) {
         const { material_code, unit_price, total_quantity, pending_quantity, approved_quantity } = records[0];
-        if ((parseFloat(approved_quantity) + parseFloat(pending_quantity)) < parseFloat(total_quantity)) {
+        if (((parseFloat(approved_quantity) + parseFloat(pending_quantity)) < parseFloat(total_quantity)) || (isTable !== "Create" && (parseFloat(approved_quantity) < parseFloat(total_quantity)))) {
           try {
             const materialDetails = await selectMaterials({limit: 1,page: 1, equals: {material_code: material_code}});
             const subheading = materialDetails[0]?.subheading || "";
@@ -2327,7 +2313,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
                           limit: 1, 
                           equals: { invoice_id: invoi, base_bill_id: record.base_bill_id }
                         });
-                        if (valueX > parseFloat(supplierdata.billed_quantity) || valueX < 1) {
+                        if (valueX > ((record[0]?.total_quantity - (record[0]?.approved_quantity + record[0]?.pending_quantity) ) + supplierdata[0]?.billed_quantity) || valueX < 1) {
                           batchChanges.push([rowIndex, colIndex, ""]);
                         }
                       }
@@ -2359,7 +2345,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
                         if (Number(record.item) === Number(pos)) {
                           const { material_code, unit_price, total_quantity, pending_quantity, approved_quantity } = record;
               
-                          if ((parseFloat(approved_quantity) + parseFloat(pending_quantity)) < parseFloat(total_quantity)) {
+                          if (((parseFloat(approved_quantity) + parseFloat(pending_quantity)) < parseFloat(total_quantity)) || (isTable !== "Create" && (parseFloat(approved_quantity) < parseFloat(total_quantity)))) {
                             const materialDetails = materialResults.find(
                               m => String(m.material_code) === String(record.material_code)
                             );
@@ -2458,342 +2444,3 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
   );
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/*
-
-
-
-
-afterChange={async (changes, source) => {
-              if (!hotTableRef.current) return
-              const hot = hotTableRef.current.hotInstance;
-              const data = hot.getData();
-              if (source === 'edit') {
-
-
-                const activeEditor = hot.getActiveEditor();
-                const changesByRow = new Map();
-
-                for (const change of changes) {
-                  const [row, col, oldValue, newValue] = change;
-                  const cellValue = newValue?.toString().trim();
-
-                  if (col === 0 && position != null && orderNumber.trim() !== '') {
-                    changesByRow.set(row, cellValue);
-                  }
-
-                  if ((col === 2 || col === 3) &&
-                    (data[row][0] && data[row][3]) &&
-                    !isNaN(data[row][2]) && !isNaN(data[row][3])
-                  ) {
-                    const result = data[row][2] * data[row][3];
-                    // Evita sobrescribir si el usuario está editando
-                    if (!activeEditor || activeEditor.row !== row || activeEditor.col !== 4) {
-                      hot.setDataAtRowProp(row, 4, formatMoney(parseFloat(result).toFixed(2)));
-                    }
-                  }
-                }
-
-                
-
-                const promises = [];
-
-                for (const [row, cellValue] of changesByRow.entries()) {
-                  promises.push((async () => {
-                    try {
-                      const pos = data[row][0];
-                      const records = await getRecord(orderNumber, pos);
-
-                      if (Number(records.item) === Number(pos)) {
-                        const { material_code, unit_price, quantity } = records;
-                        const materialDetails = await getMaterial(material_code);
-                        const subheading = materialDetails?.subheading || '';
-
-                        if (!activeEditor || activeEditor.row !== row || activeEditor.col !== 1) {
-                          hot.setDataAtRowProp(row, 1, material_code);
-                        }
-
-
-                        if (subheading) {
-                          hot.setDataAtRowProp(row, 5, "**********")
-                          console.log("Se Guardo :",subheading)
-                          updateGlobalCounter(row, "**********");  // Agregar al contador global
-                        } else {
-                          hot.setDataAtRowProp(row, 5, subheading);
-                          console.log("Se Elimino :",subheading)
-                          updateGlobalCounter(row, subheading);  // Eliminar del contador global
-                        }
-
-
-
-                        if (((realcurrency === "USD" || realcurrency === "EUR") && selectedCurrency === "COP") || ((selectedCurrency === "USD" && realcurrency === "EUR") || (selectedCurrency === "EUR" && realcurrency === "USD"))) {
-                          hot.setDataAtCell(row, 3, String(formatMoney((unit_price / 100) * sharedState.TRMCOP)));
-                        } else if (realcurrency === "COP" && selectedCurrency !== "COP") {
-                          hot.setDataAtCell(row, 3, String(formatMoney((unit_price / 100) * sharedState.TRMCOP)));
-                        } else if (realcurrency === selectedCurrency) {
-                          hot.setDataAtCell(row, 3, String(formatMoney(unit_price / 100)));
-                        } else {
-                          hot.setDataAtCell(row, 3, "");
-                          hot.setDataAtCell(row, 4, "");
-                        }
-
-                        setfactunitprice(unit_price);
-                        setfacttotalvalue(cellValue * unit_price);
-                      } else {
-                        console.warn(`No matching record found for row ${row}`);
-                      }
-                    } catch (error) {
-                      console.error(`Error processing records for row ${row}:`, error);
-                    }
-                  })());
-                }
-
-
-                await Promise.all(promises);
-
-                for (const [rowIndex, colIndex, oldValue, newValue] of changes) {
-                  if (colIndex === 5) {
-                    if (newValue === '**********' && oldValue !== '**********') {
-                      // Si la fila no está en el contador global, revertimos el valor
-                      if (!getCounter(rowIndex)) {
-                        if (!isLoading2) {
-
-                            hot.setDataAtRowProp(rowIndex, colIndex, "")
-                            console.log("Valor revertido después de la verificación.");
-
-                        } else {
-                          updateGlobalCounter(rowIndex, "**********");  // Agregar al contador global
-                          console.log("Evitamos una perdida")
-                        }
-                      } else {
-                        console.log("La fila tiene secuencia automática, no se revertirá el valor.");
-                      }
-
-                      // Actualizar el contador global para la fila
-                      updateGlobalCounter(rowIndex, newValue);
-                    }
-                    try {
-                      const subheading = newValue;
-                      const exists = await checkSubheadingExists(subheading);
-
-                      setSubheadingValidity(prev => {
-                        const newMap = new Map(prev);
-                        newMap.set(`${rowIndex}-${colIndex}`, exists);
-                        return newMap;
-                      });
-
-                      hot.render();
-
-                    } catch (error) {
-                      console.error('Error checking subheading:', error);
-                    }
-                  }
-                  if (colIndex === 2) {
-                    const valueX = parseFloat(newValue);
-                    const value1 = parseFloat(hot.getDataAtCell(rowIndex, 0));
-                    const record = await selectByPurchaseOrder(orderNumber, value1);
-
-                    if (valueX > parseFloat(record[0]?.total_quantity) || valueX < 1) {
-                      hot.setDataAtRowProp(rowIndex, colIndex, "")
-                    }
-                  }
-
-                  if ((colIndex === 2 || colIndex === 3)) {
-
-                    const result = data[rowIndex][2] * parseFloat(String(data[rowIndex][3]).replace(/[$,]/g, ''));
-                    hot.setDataAtRowProp(rowIndex, 4, String(formatMoney(result)))
-                  }
-
-                  if (colIndex === 0 && position != null && orderNumber.trim() !== '') {
-                    changesByRow.set(rowIndex, newValue?.toString().trim());
-                  }
-                }
-
-                
-
-              }
-              if (source === 'CopyPaste.paste') {
-
-                const debouncefuntion = debounce(async () => {
-                  if (!hotTableRef.current) return
-                  const hot = hotTableRef.current.hotInstance;
-                  const data = hot.getData();
-
-                  const changesByRow = new Map();
-                  const promises = [];
-                  const batchChanges = [];
-
-                  for (const [rowIndex, colIndex, oldValue, newValue] of changes) {
-                    if (colIndex === 5) {
-                      if (newValue === '**********' && oldValue !== '**********') {
-                        // Si la fila no está en el contador global, revertimos el valor
-                        if (!getCounter(rowIndex)) {
-                          if (!isLoading2) {
-                            batchChanges.push([rowIndex, colIndex, ""]); // Revertimos al valor anterior
-                            console.log("Valor revertido después de la verificación.");
-                          } else {
-                            updateGlobalCounter(rowIndex, "**********");  // Agregar al contador global
-                            console.log("Evitamos una perdida")
-                          }
-                        } else {
-                          console.log("La fila tiene secuencia automática, no se revertirá el valor.");
-                        }
-
-                        // Actualizar el contador global para la fila
-                        updateGlobalCounter(rowIndex, newValue);
-                      }
-                      try {
-                        const subheading = newValue;
-                        const exists = await checkSubheadingExists(subheading);
-
-                        setSubheadingValidity(prev => {
-                          const newMap = new Map(prev);
-                          newMap.set(`${rowIndex}-${colIndex}`, exists);
-                          return newMap;
-                        });
-
-                        hot.render();
-
-                      } catch (error) {
-                        console.error('Error checking subheading:', error);
-                      }
-                    }
-
-
-                    if (colIndex === 2) {
-                      const valueX = parseFloat(newValue);
-                      const value1 = parseFloat(hot.getDataAtCell(rowIndex, 0));
-                      const record = await selectByPurchaseOrder(orderNumber, value1);
-
-                      if (valueX > parseFloat(record[0]?.total_quantity) || valueX < 1) {
-                        batchChanges.push([rowIndex, colIndex, ""]);
-                      }
-                    }
-
-                    if ((colIndex === 2 || colIndex === 3)) {
-
-                      const result = data[rowIndex][2] * parseFloat(String(data[rowIndex][3]).replace(/[$,]/g, ''));
-
-                      batchChanges.push([rowIndex, 4, String(formatMoney(result))]);
-                    }
-
-                    if (colIndex === 0 && position != null && orderNumber.trim() !== '') {
-                      changesByRow.set(rowIndex, newValue?.toString().trim());
-                    }
-                  }
-
-
-                  for (const [row, cellValue] of changesByRow.entries()) {
-                    promises.push((async () => {
-                      try {
-                        const pos = data[row][0];
-
-
-                        if (!orderNumber || !pos) return
-                        if (orderNumber === "" || pos === "") return
-                        if (isNaN(orderNumber) || isNaN(pos)) {
-                          return; // Salir de la función si alguno no es un número
-                        }
-                        const records = await selectByPurchaseOrder(orderNumber, pos)
-
-
-                        if (Number(records[0]?.item) === Number(pos)) {
-                          const { material_code, unit_price, total_quantity, pending_quantity, approved_quantity } = records[0];
-
-                          let hola = "";
-
-                          if (invoi) {
-                            const invoice = await selectSingleInvoice(invoi);
-                            hola = invoice.state
-                          }
-                          if ((parseFloat(approved_quantity) < parseFloat(total_quantity)) || hola === "approved") {
-                            try {
-                              const materialDetails = await getMaterial(material_code);
-                              const subheading = materialDetails?.subheading || '';
-
-                              batchChanges.push([row, 1, material_code]);
-                              if (subheading) {
-                                batchChanges.push([row, 5, "**********"]);
-                                updateGlobalCounter(row, "**********");  // Agregar al contador global
-                              } else {
-                                batchChanges.push([row, 5, subheading]);
-                                updateGlobalCounter(row, subheading);  // Eliminar del contador global
-                              }
-                            } catch {
-                              console.error("El Material no existe")
-                            }
-
-
-
-                              if (((realcurrency === "USD" || realcurrency === "EUR") && selectedCurrency === "COP") || ((selectedCurrency === "USD" && realcurrency === "EUR") || (selectedCurrency === "EUR" && realcurrency === "USD"))) {
-                                console.log("HOLA1")
-                                batchChanges.push([row, 3, String(formatMoney((unit_price / 100) * sharedState.TRMCOP))]);
-  
-                              } else if (realcurrency === "COP" && selectedCurrency !== "COP") {
-                                console.log("HOLA2")
-                                batchChanges.push([row, 3, String(formatMoney((unit_price / 100) * sharedState.TRMCOP))]);
-  
-                              } else if (realcurrency === selectedCurrency) {
-                                console.log("HOLA3")
-                                batchChanges.push([row, 3, String(formatMoney(unit_price / 100))]);
-  
-                              } else {
-                                console.log("HOLA4")
-                                batchChanges.push([row, 3, ""]);
-                                batchChanges.push([row, 4, ""]);
-                              }
-  
-                              setfactunitprice(unit_price);
-                              setfacttotalvalue(cellValue * unit_price);
-                            }
-                          } else {
-                            console.log(`No matching record found for row ${row}`);
-                          }
-                        } catch (error) {
-                          console.error(`Error processing records for row ${row}:`, error);
-                        }
-                      })());
-                    }
-  
-                    await Promise.all(promises);
-  
-                    if (batchChanges.length > 0) {
-                      hot.batch(() => {
-                        batchChanges.forEach(([row, col, value]) => {
-                          hot.setDataAtCell(row, col, value);
-                        });
-                      });
-                    }
-  
-                  }, 300)
-                  debouncefuntion()
-                }
-              }}
-
-
-
-
-*/

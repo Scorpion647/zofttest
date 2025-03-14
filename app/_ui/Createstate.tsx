@@ -285,6 +285,7 @@ useEffect(() => {
       const Data: (InvoiceData | null)[] = await Promise.all(
         invoice.map(async (invo: { invoice_id: any; state: any; }) => {
           try {
+            const invoice = await selectSingleInvoice(invo.invoice_id);
             const data = await selectSupplierDataByInvoiceID(invo.invoice_id);
             if(!data[0].base_bill_id) return null
             try {
@@ -293,7 +294,7 @@ useEffect(() => {
               return {
                 consecutivo: invo.invoice_id,
                 orden: record[0]?.purchase_order, // Asegúrate de manejar 'undefined'
-                fecha: formatDate(data[0].modified_at),
+                fecha: formatDate(invoice.updated_at),
                 estado: invo.state,
               } as InvoiceData; // Asegúrate de que esto se interprete como InvoiceData
             } catch (error) {
@@ -457,7 +458,7 @@ useEffect(() => {
 
                     </VStack>
                     {filteredData.map((item) => (
-                      <VStack w="100%" key={item.orden}>
+                      <VStack w="100%" key={item.consecutivo}>
                         <Button
                           onClick={() => ChangeReturn(item.consecutivo)}
                           whiteSpace="nowrap"

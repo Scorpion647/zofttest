@@ -146,15 +146,24 @@ export async function getDocDownloadLink(
   const { doc_id, invoice_id } = document;
   const invoicePath = `${supplier_id}/${invoice_id}`;
 
+  console.log("Generando URL para:", `${invoicePath}/${doc_id}`);
+
   const { data, error } = await supabase.storage
     .from("invoices")
     .createSignedUrl(`${invoicePath}/${doc_id}`, 180);
+
   if (error) {
-    console.error(error);
+    console.error("Error al generar signed URL:", error);
     throw error;
   }
 
-  return `${data.signedUrl}?download=${invoice_id}_${doc_id}.pdf`;
+  if (!data || !data.signedUrl) {
+    throw new Error("No se generó una URL válida");
+  }
+
+  console.log("Signed URL generada:", data.signedUrl);
+
+  return `${data.signedUrl}&download=${invoice_id}_${doc_id}.pdf`;
 }
 
 export async function deleteInvoiceDocs(
@@ -174,13 +183,17 @@ export async function deleteInvoiceDocs(
 
   const filesToRemove = list.map((it) => `${invoicePath}/${it.name}`);
 
-  const { error: storageE } = await supabase.storage
-    .from("invoices")
-    .remove(filesToRemove);
-
-  if (storageE) {
-    console.error(storageE);
-    throw storageE;
+  // Verificar si hay archivos para eliminar
+  if (filesToRemove.length > 0) {
+    const { error: storageE } = await supabase.storage
+      .from("invoices")
+      .remove(filesToRemove);
+    if (storageE) {
+      console.error(storageE);
+      throw storageE;
+    }
+  } else {
+    console.log("No hay archivos para eliminar en la ruta:", invoicePath);
   }
 
   const { error } = await supabase
@@ -192,6 +205,7 @@ export async function deleteInvoiceDocs(
     throw error;
   }
 }
+
 
 export async function updateInvoice(
   invoice: Arrayable<SetRequired<TablesUpdate<"invoice_data">, "invoice_id">>,
