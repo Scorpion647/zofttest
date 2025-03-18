@@ -941,18 +941,22 @@ if (materialsMap.has(normalizedMaterialCode)) {
             domain: (domain ? domain : "VACIO"),
             name: "VACIO"
           })
+          CountGlobal.current = CountGlobal.current + 1;
+          completedTasks++;
+          continue;
         }
         const exist = await getSupplier("","",name)
         if(exist.name !== undefined){
           //si se reptite
-          
+          CountGlobal.current = CountGlobal.current + 1;
           completedTasks += 1;
           continue
         }
 
         suppliersToInsert.push({ domain, name });
+        CountGlobal.current = CountGlobal.current + 1;
         completedTasks += 1;
-
+        
 
         if (completedTasks % updateThreshold === 0 || completedTasks === totalTasks) {
           const progress = (completedTasks / totalTasks) * 100;

@@ -565,60 +565,6 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
 
 
 
-
-  function handleChange(value) {
-    if (!value) {
-      return '';
-    }
-
-
-    let formattedValue = value.replace(/[\$\s]/g, '');
-
-
-    if (formattedValue.includes('.') && formattedValue.includes(',')) {
-
-      if (formattedValue.indexOf(',') < formattedValue.indexOf('.')) {
-        formattedValue = formattedValue.replace(/,/g, '');
-      } else {
-
-        formattedValue = formattedValue.replace(/\./g, '').replace(/,/g, '.');
-      }
-    } else if (formattedValue.includes(',')) {
-
-      formattedValue = formattedValue.replace(/\./g, '').replace(/,/g, '.');
-    } else if (formattedValue.includes('.')) {
-
-      formattedValue = formattedValue.replace(/\./g, '');
-    }
-
-
-    const decimalMatch = formattedValue.match(/^(\d+)\.(\d{2})$/);
-
-    if (decimalMatch) {
-      if (decimalMatch[2] === '00') {
-        return decimalMatch[1];
-      }
-      return formattedValue;
-    }
-
-    const splitValue = formattedValue.split('.');
-    let intValue = splitValue[0];
-    let decimalValue = splitValue[1] || '';
-
-    if (decimalValue.length > 2) {
-      decimalValue = decimalValue.slice(0, 2);
-    } else if (decimalValue.length < 2) {
-      decimalValue = decimalValue.padEnd(2, '0');
-    }
-
-    formattedValue = `${intValue}.${decimalValue}`;
-
-    if (decimalValue === '00') {
-      return intValue;
-    }
-
-    return formattedValue;
-  }
   const debounceTimeoutRef = useRef(null);
   const debounceTimeoutRef1 = useRef(null);
   const debounceTimeoutRef2 = useRef(null);
@@ -1096,13 +1042,33 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
     const pos = data[coords.row]?.[0]?.toString().trim();
     const quanti = parseInt(data[coords.row]?.[2]?.toString().trim(), 10);
 
-    if (!orderNumber || !pos) return
-    if (orderNumber === "" || pos === "") return
+    if (!orderNumber || !pos){
+      updateSharedState('descripcion', "NaN");
+      updateSharedState('cantidadoc', 0);
+      updateSharedState('preciouni', 0);
+      updateSharedState('facttotal', 0);
+      updateSharedState('pesopor', 0);
+      return
+    }
+    if (orderNumber === "" || pos === ""){
+      updateSharedState('descripcion', "NaN");
+      updateSharedState('cantidadoc', 0);
+      updateSharedState('preciouni', 0);
+      updateSharedState('facttotal', 0);
+      updateSharedState('pesopor', 0);
+      return
+    }
 
     if (isNaN(orderNumber) || isNaN(pos)) {
+      updateSharedState('descripcion', "NaN");
+      updateSharedState('cantidadoc', 0);
+      updateSharedState('preciouni', 0);
+      updateSharedState('facttotal', 0);
+      updateSharedState('pesopor', 0);
       return; // Salir de la función si alguno no es un número
     }
 
+    
     const record = records.find(r => Number(r.item) === Number(pos) && (r.purchase_order) === orderNumber);
 
     
@@ -1116,16 +1082,17 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
       if (parseFloat(approved_quantity) < parseFloat(total_quantity) || (isTable !== "Create" && !isActive)) {
 
 
-
+        let cantidad = 0
         updateSharedState('descripcion', description);
         let prueba = 0
         if(isTable !== "Create"){
           const supplierdata = await selectSupplierData({page: 1, limit: 1, equals: { invoice_id: invoi, base_bill_id: matchedRecord.base_bill_id}}) 
+          cantidad = supplierdata[0]?.billed_quantity || 0
           prueba = supplierdata[0]?.billed_quantity
         }
 
 
-        if(isTable === "Create" || (prueba !== 0 && isTable === "Create")){
+        if(isTable === "Create" || (prueba !== 0 && isTable === "Create" || cantidad === 0 )){
           updateSharedState('cantidadoc', (total_quantity - approved_quantity - pending_quantity));
           updateSharedState('totalOC', (total_quantity));
           updateSharedState('OCusada', (approved_quantity + pending_quantity));
@@ -1232,13 +1199,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
     }
   }, [sharedState.TRM])
 
-  const getCurrentDate = () => {
-    const now = new Date();
-    const year = now.getFullYear().toString().slice(2);
-    const month = (now.getMonth() + 1).toString().padStart(2, '0');
-    const day = now.getDate().toString().padStart(2, '0');
-    return `${year}${month}${day}`;
-  };
+
 
   const handleAfterSelection = (row, column, row2, column2) => {
     const coords = { row, col: column };
@@ -2088,6 +2049,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
 
               }
 
+
               return cellProperties;
             }}
 
@@ -2161,10 +2123,25 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
           limit: 1,
           equals: { invoice_id: invoi, base_bill_id: record[0]?.base_bill_id }
         });
-        if (valueX > ((record[0]?.total_quantity - (record[0]?.approved_quantity + record[0]?.pending_quantity) ) + supplierdata[0]?.billed_quantity) || valueX < 1) {
+        let cantidad = 0
+        cantidad = supplierdata[0]?.billed_quantity || 0
+        if ((valueX > ((record[0]?.total_quantity - (record[0]?.approved_quantity + record[0]?.pending_quantity) ) + supplierdata[0]?.billed_quantity) || valueX < 1) && cantidad > 0) {
           hot.setDataAtCell(rowIndex, colIndex, "");
+        }else if(cantidad === 0){
+          if(valueX > record[0]?.total_quantity || valueX + (record[0]?.pending_quantity + record[0]?.approved_quantity) > record[0]?.total_quantity){
+            hot.setDataAtCell(rowIndex, colIndex, "");
+          }
         }
       }
+    }
+
+    if(colIndex === 4){
+      const totalSum = data.reduce((sum, row) => {
+        const unip = parseFloat(String(row[3]).replace(/[$,]/g, '')) || 0;
+        const can = parseFloat(row[2]) || 0;
+        return unip > 0 && can > 0 ? sum + (unip * can) : sum;
+      }, 0);
+      updateSharedState('totalfactura', formatMoney(totalSum.toFixed(2)));
     }
 
     // Si el cambio ocurre en la columna 2 o 3, recalcular y actualizar la columna 4.
@@ -2200,13 +2177,16 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
       if (!orderNumber || !pos || orderNumber === "" || pos === "" || isNaN(orderNumber) || isNaN(pos)) {
         continue;
       }
-      const records = await selectByPurchaseOrder(orderNumber, pos);
-      if (Number(records[0]?.item) === Number(pos)) {
-        const { material_code, unit_price, total_quantity, pending_quantity, approved_quantity } = records[0];
+      const record = records.find(r => Number(r.item) === Number(pos) && (r.purchase_order) === orderNumber);
+
+      if (Number(record.item) === Number(pos)) {
+        const { material_code, unit_price, total_quantity, pending_quantity, approved_quantity } = record;
         if (((parseFloat(approved_quantity) + parseFloat(pending_quantity)) < parseFloat(total_quantity)) || (isTable !== "Create" && (parseFloat(approved_quantity) < parseFloat(total_quantity)))) {
           try {
-            const materialDetails = await selectMaterials({limit: 1,page: 1, equals: {material_code: material_code}});
-            const subheading = materialDetails[0]?.subheading || "";
+            const materialDetails = materialResults.find(
+                              m => String(m.material_code) === String(record.material_code)
+                            );
+            const subheading = materialDetails.data[0].subheading || undefined
             // Actualizamos la columna 1 con el material code.
             hot.setDataAtCell(rowIndex, 1, material_code);
             if (subheading) {
@@ -2318,7 +2298,16 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
                         }
                       }
                     }
-              
+                    
+                    if(colIndex === 4){
+                      const totalSum = data.reduce((sum, row) => {
+                        const unip = parseFloat(String(row[3]).replace(/[$,]/g, '')) || 0;
+                        const can = parseFloat(row[2]) || 0;
+                        return unip > 0 && can > 0 ? sum + (unip * can) : sum;
+                      }, 0);
+                      updateSharedState('totalfactura', formatMoney(totalSum.toFixed(2)));
+                    }
+
                     // Actualiza la columna 4 en función de las columnas 2 y 3
                     if (colIndex === 2 || colIndex === 3) {
                       const result = data[rowIndex][2] * parseFloat(String(data[rowIndex][3]).replace(/[$,]/g, ''));
@@ -2355,8 +2344,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
 
                               subheading = materialDetails.data[0].subheading || undefined
 
-                              console.log("Materials Details :",materialDetails)
-                              console.log("Subheading :",subheading)
+                              
                               if (subheading) {
                                 batchChanges.push([row, 5, "**********"]);
                                 updateGlobalCounter(row, "**********");
