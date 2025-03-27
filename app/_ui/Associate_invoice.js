@@ -2183,12 +2183,12 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
         const { material_code, unit_price, total_quantity, pending_quantity, approved_quantity } = record;
         if (((parseFloat(approved_quantity) + parseFloat(pending_quantity)) < parseFloat(total_quantity)) || (isTable !== "Create" && (parseFloat(approved_quantity) < parseFloat(total_quantity)))) {
           try {
+            hot.setDataAtCell(rowIndex, 1, material_code);
             const materialDetails = materialResults.find(
                               m => String(m.material_code) === String(record.material_code)
                             );
+            
             const subheading = materialDetails.data[0].subheading || undefined
-            // Actualizamos la columna 1 con el material code.
-            hot.setDataAtCell(rowIndex, 1, material_code);
             if (subheading) {
               // Si hay subheading, establecemos "**********" y actualizamos el contador global.
               updateGlobalCounter(rowIndex, "**********");

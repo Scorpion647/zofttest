@@ -6,7 +6,7 @@ import Handsontable from 'handsontable';
 import { getRecords, getRecordsInfo, updateRecordInfo, getRecordInfo, getMaterial, getSupplier, getInvoice, getSuplierInvoice, getRecordInvoice, getInvo, getRecord } from '@/app/_lib/database/service';
 import { Textarea,FormControl, FormLabel, Spinner, Switch, Tooltip, Select, ChakraProvider,Icon, Flex, Box, VStack, Heading, HStack, Menu, MenuButton, MenuList, MenuItem, Button, Text, Input, useDisclosure, Modal, ModalOverlay, ModalContent, ModalHeader, ModalCloseButton, ModalBody, ModalFooter, Checkbox } from "@chakra-ui/react";
 import {handleExport} from '@/app/_ui/ExportButton'
-import { updateMaterial, insertMaterial } from '@/app/_lib/database/materials';
+import { updateMaterial, insertMaterial, selectSingleMaterial } from '@/app/_lib/database/materials';
 import {  deleteInvoiceDocs, getDocDownloadLink, selectInvoice_data, selectSingleInvoice, updateInvoice } from '@/app/_lib/database/invoice_data';
 import { FaSave } from "react-icons/fa";
 import { EditIcon } from '@chakra-ui/icons';
@@ -294,7 +294,7 @@ return "approved"
   const [isModalOpen, setModalOpen] = useState(false);
   const [cellInfo, setCellInfo] = useState(null);
 
-  const handleCellClick = (event, coords, td) => {
+  const handleCellClick = async (event, coords, td) => {
     const { row, col } = coords;
     const cellContent = td.innerText;
 
@@ -317,7 +317,17 @@ return "approved"
       console.log(subp)
       console.log(unit)
       setCellInfo({ row, col, code, subp, unit, content: cellContent });
-      setModalOpen(true);
+      try{
+        const material = await selectSingleMaterial(code)
+        if(material.measurement_unit && material.type){
+          return
+        }else{
+          setModalOpen(true);
+        }
+      } catch{
+        return
+      }
+      
     }
   }
 
@@ -352,6 +362,9 @@ return "approved"
 };
 
 const [existfile,setexistfile] = useState("")
+
+
+
 
   const fetchData = async () => {
     setIsLoading(true)
@@ -499,6 +512,7 @@ const data4 = Typematerial(type);
           setTextValue("")
         }
       }
+      
     }
   }
 
@@ -507,9 +521,12 @@ const data4 = Typematerial(type);
 
 
   const validateTable = () => {
+    console.log("Estamos en validacion")
     if(!hotTableRef.current) return
+    console.log("pasamos 1")
     const hot = hotTableRef.current.hotInstance;
     if (!hot || hot.isDestroyed) return;
+    console.log("pasamos 2")
     const rows = hot.getData(); // Obtén todas las filas de la tabla
     const emptyColumnIndexes = [9, 10]; // Columnas que deseas comprobar si están vacías (ejemplo: columna 0 y 2)
     const wordColumnIndex = 15; // Columna específica para verificar una palabra (ejemplo: columna 3)
@@ -675,6 +692,7 @@ const data4 = Typematerial(type);
  }
 
 
+ const [isTableValid, setisTableValid] = useState(validateTable())
 
  const [Codigo,setCodigo] = useState("")
  const [isapproved, setisapproved] = useState(false);
@@ -709,7 +727,7 @@ const { isOpen: isOpen5, onOpen: onOpen5, onClose: onClose5 } = useDisclosure();
     console.log('Texto ingresado:', textValue); // Acción cuando se presiona "Aceptar"
     onClose5(); // Cierra el modal
   };
-  const isTableValid = validateTable();
+
   
   useEffect(() => {
     const confirm = async () => {
@@ -942,6 +960,9 @@ const handleChangeFMM = useCallback((e) => {
                         //beforeChange={handleAfterChange}
                         fixedColumnsStart={3}
                         afterOnCellMouseDown={handleCellClick}
+                        afterChange={async (changes, source) => {
+                          setisTableValid(validateTable())
+                        }}
                         beforeContextMenuShow={(instance, menu, coords) => {
                           const { row, col } = coords
                           const cellData = instance.getDataAtCell(row, 15);
