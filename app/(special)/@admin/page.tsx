@@ -188,10 +188,12 @@ export default function Admin() {
     try {
       const response = await fetch("/logout", {
         method: "GET",
+        cache: "no-store", // para evitar respuestas en caché
       });
-
+  
       if (response.ok) {
-        router.push("/");
+        // Forzar la actualización del estado en el cliente
+        router.refresh();
       } else {
         console.error("Failed to log out");
       }
@@ -199,6 +201,8 @@ export default function Admin() {
       console.error("Error:", error);
     }
   };
+
+  
 
   const toggleActive = () => {
     setMenuL((prevState) => !prevState);
@@ -287,7 +291,7 @@ export default function Admin() {
     <ChakraProvider>
       <div className="w-full h-full flex justify-center items-center p-4 bg-gradient-to-tr from-green-900 to-green-700">
         <div
-          className={`relative flex w-full max-w-6xl  `}>
+          className={`relative flex w-full max-w-6xl lg:max-h-[570px]  `}>
             <Box position="relative">
  
 
@@ -358,7 +362,7 @@ export default function Admin() {
               </Box>
             </Flex>
 
-            <HStack height="100%" mt={3} spacing={2} align="stretch">
+            <HStack height="100%" mt={3} spacing={2} align="stretch" className=" lg:max-h-[450px]">
               <VStack
                 justify="center"
                 width={MenuL ? "7%" : "15%"}
@@ -524,8 +528,9 @@ export default function Admin() {
                 border="1px"
                 borderColor="gray.300"
                 borderRadius="md"
-                className=" p-3"
+                className=" p-3 lg:max-h-[450px]"
                 align="stretch">
+              
                 {isRegistro &&
                   !isUsuario &&
                   !isDominio &&
@@ -706,136 +711,10 @@ export default function Admin() {
               </div>
             </div>
           )}
-
-          {showRightBox && (
-            <div className="hidden md:block p-4 bg-white border text-center border-gray-300 rounded-3xl md:w-1/3 ml-4 transition-opacity duration-300">
-              <h2 className="text-xl font-bold mb-4">
-                Datos de la Orden de Compra
-              </h2>
-              <HStack
-                textAlign="center"
-                justifyContent="center"
-                alignItems="center">
-                <VStack>
-                  <HStack
-                    justifyContent="space-between"
-                    alignItems="flex-start">
-                    <p className="font-bold flex-1 flex-shrink">Descripcion</p>
-                    <p className=" flex-1 text-right flex-shrink-0 ">
-                      {state.descripcion}
-                    </p>
-                  </HStack>
-                  <HStack
-                    justifyContent="space-between"
-                    alignItems="flex-start">
-                    <p className="font-bold flex-1 flex-shrink-0">Proveedor</p>
-                    <p className=" flex-1 text-right flex-shrink-0 whitespace-nowrap text-ellipsis">
-                      {state.proveedor}
-                    </p>
-                  </HStack>
-                  <HStack
-                    justifyContent="space-between"
-                    alignItems="flex-start">
-                    <p className="font-bold flex-1 flex-shrink-0 whitespace-nowrap">
-                      Cantidad O.C
-                    </p>
-                    <p className=" flex-1 text-right flex-shrink-0 whitespace-nowrap text-ellipsis">
-                      {state.cantidadoc}
-                    </p>
-                  </HStack>
-                  <HStack
-                    justifyContent="space-between"
-                    alignItems="flex-start">
-                    <p className="font-bold flex-1 flex-shrink-0 whitespace-nowrap">
-                      Precio Unitario O.C
-                    </p>
-                    <p className=" flex-1 text-right flex-shrink-0 whitespace-nowrap text-ellipsis">
-                      {state.preciouni}
-                    </p>
-                  </HStack>
-                  <HStack
-                    justifyContent="space-between"
-                    alignItems="flex-start">
-                    <p className="font-bold flex-1 flex-shrink">Moneda</p>
-                    <p className=" flex-1 text-right flex-shrink-0 whitespace-nowrap ">
-                      {state.moneda}
-                    </p>
-                  </HStack>
-                  <HStack
-                    justifyContent="space-between"
-                    alignItems="flex-start">
-                    <p className="font-bold flex-1 flex-shrink-0 whitespace-nowrap">
-                      Precio Unitario Fact
-                    </p>
-                    <p className=" flex-1 text-right flex-shrink-0 whitespace-nowrap text-ellipsis">
-                      ${_formatCurrency(state.factunit)}
-                    </p>
-                  </HStack>
-                  <HStack
-                    justifyContent="space-between"
-                    alignItems="flex-start">
-                    <p className="font-bold flex-1 flex-shrink-0 whitespace-nowrap">
-                      Valor Total Fact
-                    </p>
-                    <p className=" flex-1 text-right flex-shrink-0 whitespace-nowrap text-ellipsis">
-                      ${_formatCurrency(state.facttotal)}
-                    </p>
-                  </HStack>
-                </VStack>
-                <VStack
-                  textAlign="end"
-                  justifyContent="end"
-                  alignItems="end"></VStack>
-              </HStack>
-              <p className="font-bold mt-3">
-                Suma de las cantidades: {state.columnSum}{" "}
-              </p>{" "}
-              {/* Muestra el valor de la celda seleccionada */}
-              <p className="font-bold ">
-                Cantidades: {state.cantidadespor}{" "}
-              </p>{" "}
-              {/* Muestra la suma de la columna */}
-              <p className="font-bold ">Peso X material: {state.pesopor} </p>
-              <p className="font-bold ">
-                Factor de conversion: {state.factor}{" "}
-              </p>
-              <p className="font-bold ">Bulto: {state.bulto} </p>
-              <button
-                className="mt-4 px-4 py-2 bg-red-500 text-white rounded"
-                onClick={() => setShowRightBox(false)}>
-                Cerrar
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </ChakraProvider>
   );
 }
 
-/*
 
-'use client'
-import { getAllRecords } from '@/app/_lib/database/records'
-
-
-
-export default async function UserPage() {
-
-    const hola = async () => {
-
-
-        const Records = await getAllRecords({ date_before: (new Date()).toISOString(), number_of_records: 10 })
-        alert((new Date()).toISOString())
-        console.log(Records)
-    }
-
-    await hola();
-
-    return (
-
-        <h1>user</h1>
-    );
-}
-
-*/

@@ -1070,7 +1070,14 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
 
     
     const record = records.find(r => Number(r.item) === Number(pos) && (r.purchase_order) === orderNumber);
-
+    if(!record?.item){
+      updateSharedState('descripcion', "NaN");
+      updateSharedState('cantidadoc', 0);
+      updateSharedState('preciouni', 0);
+      updateSharedState('facttotal', 0);
+      updateSharedState('pesopor', 0);
+      return
+    }
     
 
 
@@ -1640,7 +1647,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
             {realcurrency !== "" && (
             <Tooltip
               label={
-                "Factura registrada en: " +
+                "Orden de compra registrada en: " +
                 (realcurrency === "USD" ? "Dólares" : realcurrency === "EUR" ? "Euros" : "Pesos Colombianos")
               }
             >
@@ -1684,7 +1691,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
             <HStack className=" bg-white rounded-2xl" padding="3" position="relative" width="100%" spacing={0}>
               <VStack spacing={0} align="start" justify="start" width="30%" >
                 <Text h="20%" className=" font-semibold" fontSize={iMediumScreen ? "60%" : "70%"}>Descripcion:</Text>
-                <Text h="20%" className=" font-semibold" fontSize={iMediumScreen ? "60%" : "70%"}>Cantidad OC:</Text>
+                <Text h="20%" className=" font-semibold" fontSize={iMediumScreen ? "60%" : "70%"}>Cantidad en  OC:</Text>
                 <Text h="20%" className=" font-semibold" fontSize={iMediumScreen ? "60%" : "70%"}>Valor en Dolares</Text>
 
               </VStack>
@@ -1740,7 +1747,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
                   <Tooltip placement="top" label="Introduzca la trm con la que facturo">
                     <Input fontSize={iMediumScreen ? "70%" : "90%"} onClick={() => updateSharedState("TRMCOP",)} className=" placeholder:text-center" placeholder={realcurrency + " --> " + selectedCurrency} isDisabled={!isActive} type="number" min="1" step="0.0000000001" value={(isTable !== "Create") ? sharedState.TRMCOP : undefined} onBlur={handleTRMCOP} h="25px" width={iMediumScreen ? "40%" : "190px"} bg="white"></Input>
                   </Tooltip>
-                  <Tooltip fontSize="xs" label={realcurrency !== "" ? "Factura registrada en " + (realcurrency === "USD" ? "Dolares" : (realcurrency === "EUR" ? "Euros" : "Pesos Colombianos")) + " y se facturara en " + (selectedCurrency === "USD" ? "Dolares" : (selectedCurrency === "EUR" ? "Euros" : "Pesos Colombianos")) : ""}>
+                  <Tooltip fontSize="xs" label={realcurrency !== "" ? "Orden de compra registrada en " + (realcurrency === "USD" ? "Dolares" : (realcurrency === "EUR" ? "Euros" : "Pesos Colombianos")) + " y se facturara en " + (selectedCurrency === "USD" ? "Dolares" : (selectedCurrency === "EUR" ? "Euros" : "Pesos Colombianos")) : ""}>
                     <InfoOutlineIcon w={3} h={3} color="black" />
                   </Tooltip>
                 </HStack>
@@ -1864,7 +1871,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
 
             cells={(row, col, prop) => {
               const cellProperties = {};
-              const editableStyle = { backgroundColor: '#FFFF00' };
+              const editableStyle = { backgroundColor: '#ecf395' };
               const readonlyStyle = { backgroundColor: '#f5c6c6' };
               const reset = { backgroundColor: '' };
 
@@ -2045,8 +2052,20 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
                   };
                 }
               }
-              if (col === 3) {
-
+              if (col === 2) {
+                if(!data[row][2] && (data[row][0] && data[row][1]) ){
+                  cellProperties.renderer = (hotInstance, td, row, col, prop, value, cellProperties) => {
+                    Handsontable.renderers.TextRenderer(hotInstance, td, row, col, prop, value, cellProperties);
+                    td.style.backgroundColor = editableStyle.backgroundColor
+                    td.title = 'Coloque la cantidad a registrar';
+                  };
+                }else{
+                  cellProperties.renderer = (hotInstance, td, row, col, prop, value, cellProperties) => {
+                    Handsontable.renderers.TextRenderer(hotInstance, td, row, col, prop, value, cellProperties);
+                    td.style.backgroundColor = reset.backgroundColor;
+                    td.title = '';
+                  };
+                }
               }
 
 
@@ -2178,7 +2197,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
         continue;
       }
       const record = records.find(r => Number(r.item) === Number(pos) && (r.purchase_order) === orderNumber);
-
+      if(!record?.item) return
       if (Number(record.item) === Number(pos)) {
         const { material_code, unit_price, total_quantity, pending_quantity, approved_quantity } = record;
         if (((parseFloat(approved_quantity) + parseFloat(pending_quantity)) < parseFloat(total_quantity)) || (isTable !== "Create" && (parseFloat(approved_quantity) < parseFloat(total_quantity)))) {
@@ -2411,7 +2430,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
             contextMenu={{
               callback: (key, options) => {
                 setTimeout(() => {
-                  console.log(`Se seleccionó: ${key}`);
+                
                 }, 100); // 🕐 Espera 100ms antes de ejecutar
               },
               items: {

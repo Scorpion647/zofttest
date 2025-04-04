@@ -1,6 +1,6 @@
 "use client";
 import FormContext from "@/app/_lib/utils/formContext";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import AccessHero from "../_ui/AccessHero";
 import { FormType } from "../_ui/components/accessForm";
@@ -21,11 +21,28 @@ export default function AccessPageLayout({
   signup: React.ReactNode;
 }) {
   const [formType, setFormType] = useState<FormType>(FormType.Login);
-//<Image alt=""  width='100' height='100' src="/zoft.png"></Image>
+
+console.log(window.innerHeight)
+const [height, setHeight] = useState(window.innerHeight);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setHeight(window.innerHeight);
+    };
+
+    window.addEventListener('resize', handleResize);
+
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []); 
   return (
     <>
     <ChakraProvider>
-    <Box  className="   justify-items-center align-top z-50 w-full  absolute">
+    {(height > 730) && (
+      <>
+      <Box  className="   justify-items-center align-top z-50 w-full  absolute">
     
     <Box
       mt={2}
@@ -56,6 +73,8 @@ export default function AccessPageLayout({
       </Box>
 
     </Box>
+      </>
+    )}
     </ChakraProvider>
     <FormContext.Provider value={{ formType, setFormType }}>
       <main className="flex w-full h-screen">

@@ -55,7 +55,7 @@ export default function GuestPage() {
 
         <Box bgColor="white" className="rounded-2xl p-12 lg:w-[40%] sm:w-[60%] w-[80%] h-[50%] lg:h-[46%] sm:h-[50%] content-center">
           <HStack justify="center" h="20%">
-            <HStack display="inline-flex" className="p-4 bg-gray-400">
+            <HStack  className=" bg-gray-400">
               <Image
                 src="/grupo-ecopetrol.png"
                 alt="Descripción de la imagen"
