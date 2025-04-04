@@ -22,21 +22,25 @@ export default function AccessPageLayout({
 }) {
   const [formType, setFormType] = useState<FormType>(FormType.Login);
 
-console.log(window.innerHeight)
-const [height, setHeight] = useState(window.innerHeight);
 
-  useEffect(() => {
-    const handleResize = () => {
-      setHeight(window.innerHeight);
-    };
+const [height, setHeight] = useState(typeof window !== 'undefined' ? window.innerHeight : 0);
 
-    window.addEventListener('resize', handleResize);
+useEffect(() => {
+  if (typeof window === 'undefined') return; 
+
+  const handleResize = () => {
+    setHeight(window.innerHeight);
+  };
 
 
-    return () => {
-      window.removeEventListener('resize', handleResize);
-    };
-  }, []); 
+  handleResize();
+
+  window.addEventListener('resize', handleResize);
+  
+  return () => {
+    window.removeEventListener('resize', handleResize);
+  };
+}, []);
   return (
     <>
     <ChakraProvider>
