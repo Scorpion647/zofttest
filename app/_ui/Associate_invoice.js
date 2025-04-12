@@ -1572,12 +1572,14 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
         <HStack position="relative" width="100%" height="20%" >
 
           <VStack width="25%">
-            <HStack width="100%" height="20px" textAlign="start" align="start" justify="start">
+            <HStack width="100%" height="15px" textAlign="start" align="start" justify="start">
+              <Tooltip fontSize="md" placement="top" label="Regresar">
               <Button onClick={() => setisTable(false)} width="30%" height="100%" colorScheme='teal' backgroundColor='#F1D803'>
                 <ArrowBackIcon w={3} h={3} color='black' />
               </Button>
+              </Tooltip>
               {(isButton && !isActive) && (
-                <Tooltip label="Habilitar Edicion" fontSize="md">
+                <Tooltip placement="top" label="Habilitar Edicion"  fontSize="md">
                   <Button onClick={toggleActive} width="30%" height="100%" colorScheme='teal' backgroundColor='#F1D803'>
                     <Icon as={EditIcon} w={3} h={3} color="black" />
                   </Button>
@@ -1609,7 +1611,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
                 color="black"
                 isDisabled={isLoading}
               >
-                <Button ref={buttonRef} isLoading={isLoading || (!isLoading && !edittable && sharedState.proveedor !== "")} onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)} colorScheme='teal' backgroundColor='#F1D803'>
+                <Button isDisabled={suggestions.length === 0 || showorder === ""} ref={buttonRef} isLoading={isLoading || (!isLoading && !edittable && sharedState.proveedor !== "")} onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)} colorScheme='teal' backgroundColor='#F1D803'>
                   <SearchIcon w={5} h={5} color='black' />
                 </Button>
               </Tooltip>
@@ -1617,7 +1619,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
             <HStack width="100%" align="start" justify="start">
             <Popover placement="bottom-start">
       <PopoverTrigger align="start" justify="start">
-        <Button isDisabled={!isActive} colorScheme='teal'  h="5" bgColor="#F1D803">
+        <Button  isDisabled={!isActive} colorScheme='teal'  h="5" bgColor="#F1D803">
           <Text textColor="black" fontSize="60%">Opciones</Text>
         </Button>
       </PopoverTrigger>
@@ -1708,7 +1710,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
                     
                     <HStack spacing={3}>
                       <VStack spacing={0}>
-                        <Text fontSize={iMediumScreen ? "60%" : "70%"} className=" font-bold">OC total</Text>
+                        <Text fontSize={iMediumScreen ? "60%" : "70%"} className=" font-bold">Cant. total</Text>
                         <Text fontSize={iMediumScreen ? "60%" : "70%"}>{sharedState.totalOC}</Text>
                       </VStack>
                       <VStack spacing={0}>
@@ -1716,7 +1718,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
                         <Text fontSize={iMediumScreen ? "60%" : "70%"} className=" font-bold">=</Text>
                       </VStack>
                       <VStack spacing={0}>
-                        <Text fontSize={iMediumScreen ? "60%" : "70%"} className=" font-bold" >OC usada</Text>
+                        <Text fontSize={iMediumScreen ? "60%" : "70%"} className=" font-bold" >Cant. usada</Text>
                         <Text fontSize={iMediumScreen ? "60%" : "70%"}>{sharedState.OCusada}</Text>
                       </VStack>
                       <VStack spacing={0}>
@@ -1724,7 +1726,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
                         <Text fontSize={iMediumScreen ? "60%" : "70%"} className=" font-bold">+</Text>
                       </VStack>
                       <VStack spacing={0}>
-                        <Text fontSize={iMediumScreen ? "60%" : "70%"}  className=" font-bold" >OC disponible</Text>
+                        <Text fontSize={iMediumScreen ? "60%" : "70%"}  className=" font-bold" >Cant. disponible</Text>
                         <Text fontSize={iMediumScreen ? "60%" : "70%"}>{sharedState.cantidadoc}</Text>
                       </VStack>
                     </HStack>

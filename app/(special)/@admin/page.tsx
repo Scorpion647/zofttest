@@ -302,7 +302,7 @@ export default function Admin() {
              
           {/* Caja Principal */}
           <div
-            className={`relative p-4 bg-gradient-to-tr from-gray-200 to-gray-300 border border-gray-300 text-center rounded-3xl shadow-md  ${showRightBox ? "md:w-2/3" : "w-full"} flex flex-col`}>
+            className={`relative p-4 bg-gradient-to-tr from-gray-200 to-gray-300 border border-gray-300 text-center rounded-3xl shadow-md  ${showRightBox ? "md:w-2/3" : "w-full"} flex flex-col `}>
             <Flex
               width="100%"
               alignItems="center"
@@ -361,8 +361,8 @@ export default function Admin() {
               </HStack>
               </Box>
             </Flex>
-
-            <HStack height="100%" mt={3} spacing={2} align="stretch" className=" lg:max-h-[450px]">
+            {/*xl:max-h-[550px] */}
+            <HStack height="100%" mt={3} spacing={2} align="stretch" className=" lg:max-h-[450px] ">
               <VStack
                 justify="center"
                 width={MenuL ? "7%" : "15%"}
@@ -377,7 +377,7 @@ export default function Admin() {
                 <VStack height={iLargeScreen ? "" : "60%"}   justify={iLargeScreen ? "center" : ""}>
                   <MainButton
                     onClick={() => screen(1)}
-                    text="Busqueda de Registros"
+                    text="Gestion de OCs"
                     icon={
                       <SearchIcon
                         w={iSmallScreen ? "25px" : iMediumScreen ? "12px" : "14px"}
@@ -528,7 +528,7 @@ export default function Admin() {
                 border="1px"
                 borderColor="gray.300"
                 borderRadius="md"
-                className=" p-3 lg:max-h-[450px]"
+                className=" p-3 lg:max-h-[450px] "
                 align="stretch">
               
                 {isRegistro &&

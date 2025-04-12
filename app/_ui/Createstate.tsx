@@ -13,6 +13,7 @@ import {  selectSingleBill } from '@/app/_lib/database/base_bills'
 import ReturnTable from '@/app/_ui/components/ReturnTable'
 import { Associate_invoice } from '@/app/_ui/Associate_invoice'
 import { getRole } from "../_lib/supabase/client";
+import { IoMdRefresh } from "react-icons/io";
 
 
 
@@ -398,9 +399,16 @@ useEffect(() => {
                     backgroundColor='white'
                     placeholder="ID Factura"
                   />
+                  <Tooltip label="Buscar">
                   <Button onClick={PressButton} colorScheme='teal' backgroundColor='#F1D803'>
                     <SearchIcon w={5} h={5} color='black' />
                   </Button>
+                  </Tooltip>
+                  <Tooltip label="Refrescar">
+                  <Button onClick={fetchData} colorScheme='teal' backgroundColor='#F1D803'>
+                    <IoMdRefresh width={50} height={50} color='black' />
+                  </Button>
+                  </Tooltip>
                 </HStack>
                 {!iSmallScreen && (
                   <HStack width="20%">
@@ -422,9 +430,11 @@ useEffect(() => {
                   <option value="rejected">Rechazado</option>
                 </Select>
                 {(IsAdmin && !iSmallScreen) && (
-                  <Button mr="2" onClick={() => (setisTable(true), setType("Create"), setcodigo(""))} colorScheme='teal' backgroundColor='#F1D803'>
+                  <Tooltip label="Asociar factura">
+                    <Button mr="2" onClick={() => (setisTable(true), setType("Create"), setcodigo(""))} colorScheme='teal' backgroundColor='#F1D803'>
                     <AddIcon w={5} h={5} color='black' />
                   </Button>
+                  </Tooltip>
                 )}
 
 
