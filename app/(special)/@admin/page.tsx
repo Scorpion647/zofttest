@@ -291,7 +291,7 @@ export default function Admin() {
     <ChakraProvider>
       <div className="w-full h-full flex justify-center items-center p-4 bg-gradient-to-tr from-green-900 to-green-700">
         <div
-          className={`relative flex w-full max-w-6xl lg:max-h-[570px]  `}>
+          className={`relative flex w-full max-w-6xl   `}>
             <Box position="relative">
  
 
@@ -362,7 +362,7 @@ export default function Admin() {
               </Box>
             </Flex>
             {/*xl:max-h-[550px] */}
-            <HStack height="100%" mt={3} spacing={2} align="stretch" className=" lg:max-h-[450px] ">
+            <HStack height="100%" mt={3} spacing={2} align="stretch" className=" [@media(max-width:1430px)]:max-h-[450px] [@media(min-width:1440px)]:max-h-[500px] ">
               <VStack
                 justify="center"
                 width={MenuL ? "7%" : "15%"}
@@ -528,7 +528,7 @@ export default function Admin() {
                 border="1px"
                 borderColor="gray.300"
                 borderRadius="md"
-                className=" p-3 lg:max-h-[450px] "
+                className=" p-3 [@media(max-width:1430px)]:max-h-[450px]  [@media(min-width:1440px)]:max-h-[500px] "
                 align="stretch">
               
                 {isRegistro &&

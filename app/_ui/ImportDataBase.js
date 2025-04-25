@@ -22,7 +22,7 @@ import {
 import { FaCloudArrowUp } from "react-icons/fa6";
 import { getMaterial, getRecords, getMaterials, getSuppliers, getSupplier, getRecord } from '@/app/_lib/database/service';
 import { AddIcon, CloseIcon, EditIcon } from '@chakra-ui/icons';
-import { insertBills, selectBills } from '../_lib/database/base_bills';
+import { insertBills, selectBills, selectByPurchaseOrder } from '../_lib/database/base_bills';
 import { deleteMaterial, insertMaterial, selectMaterials, selectSingleMaterial, updateMaterial } from '../_lib/database/materials';
 import { insertSupplier, selectSingleSupplier, selectSuppliers } from '../_lib/database/suppliers';
 import { FaWpforms } from "react-icons/fa6";
@@ -99,6 +99,7 @@ export const ImportDataBase = ({ sharedState, updateSharedState}) => {
   const [iMediumScreen] = useMediaQuery("(min-width: 768px) and (max-width: 1024px)");
   const [iLargeScreen] = useMediaQuery("(min-width: 1024px)");
   const CountGlobal = useRef(0);
+  
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -703,6 +704,21 @@ recordsToInsert.forEach(record => {
 });
 
 
+const supplierMap = new Map();
+  let page = 1;
+
+  if(selectedTable === "Registros"){
+    while (true) {
+      const batch = await selectSuppliers({ page, limit: 100, equals: {} });
+      if (batch.length === 0) break;
+      for (const s of batch) {
+        // s.supplier_id es un number, s.name es el string
+        supplierMap.set(s.name, s.supplier_id);
+      }
+      page++;
+    }
+  }
+
     for (const row of  data) {
       const args = {};
       if (cancelarRef.current) { 
@@ -753,14 +769,22 @@ if (
   invalidbills.push({ purchase_order, item: position, reason: "Faltan datos obligatorios" });
   CountGlobal.current = CountGlobal.current + 1;
   completedTasks += 1;
+  if (completedTasks % updateThreshold === 0 || completedTasks === totalTasks) {
+    const progress = (completedTasks / totalTasks) * 100;
+    setProgress(progress);
+  }
   continue
 }
 
 // Validaciones de valores no permitidos
-if (!["COP", "USD", "EUR"].includes(currency)) {
+if (currency !== "COP" && currency !== "USD" && currency !== "EUR") {
   invalidbills.push({ purchase_order, item: position, reason: "Moneda inválida" });
   CountGlobal.current = CountGlobal.current + 1;
   completedTasks += 1;
+  if (completedTasks % updateThreshold === 0 || completedTasks === totalTasks) {
+    const progress = (completedTasks / totalTasks) * 100;
+    setProgress(progress);
+  }
   continue
 }
 
@@ -768,6 +792,10 @@ if (parseFloat(net_price) <= 0) {
   invalidbills.push({ purchase_order, item: position, reason: "Precio neto debe ser mayor a 0" });
   CountGlobal.current = CountGlobal.current + 1;
   completedTasks += 1;
+  if (completedTasks % updateThreshold === 0 || completedTasks === totalTasks) {
+    const progress = (completedTasks / totalTasks) * 100;
+    setProgress(progress);
+  }
   continue
 }
 
@@ -775,6 +803,10 @@ if (parseFloat(unit_price) <= 0) {
   invalidbills.push({ purchase_order, item: position, reason: "Precio unitario debe ser mayor a 0" });
   CountGlobal.current = CountGlobal.current + 1;
   completedTasks += 1;
+  if (completedTasks % updateThreshold === 0 || completedTasks === totalTasks) {
+    const progress = (completedTasks / totalTasks) * 100;
+    setProgress(progress);
+  }
   continue
 }
 
@@ -782,6 +814,10 @@ if (parseFloat(quantity) <= 0) {
   invalidbills.push({ purchase_order, item: position, reason: "Cantidad debe ser mayor a 0" });
   CountGlobal.current = CountGlobal.current + 1;
   completedTasks += 1;
+  if (completedTasks % updateThreshold === 0 || completedTasks === totalTasks) {
+    const progress = (completedTasks / totalTasks) * 100;
+    setProgress(progress);
+  }
   continue
 }
 
@@ -789,13 +825,45 @@ if (!Number.isInteger(parseFloat(position)) || parseInt(position) <= 0) {
   invalidbills.push({ purchase_order, item: position, reason: "Posición debe ser un entero mayor a 0" });
   CountGlobal.current = CountGlobal.current + 1;
   completedTasks += 1;
+  if (completedTasks % updateThreshold === 0 || completedTasks === totalTasks) {
+    const progress = (completedTasks / totalTasks) * 100;
+    setProgress(progress);
+  }
   continue
 }
 
+
+
+if (parseFloat(quantity) <= 0) {
+  invalidbills.push({ purchase_order, item: position, reason: "Cantidad debe ser mayor a 0" });
+  CountGlobal.current = CountGlobal.current + 1;
+  completedTasks += 1;
+  if (completedTasks % updateThreshold === 0 || completedTasks === totalTasks) {
+    const progress = (completedTasks / totalTasks) * 100;
+    setProgress(progress);
+  }
+  continue
+}
+
+const searchrecord = await selectByPurchaseOrder(purchase_order,parseInt(normalizeNumber(String(position))))
+
+if(searchrecord.length > 0){
+  invalidbills.push({ purchase_order, item: position, reason: "Ya existe este OC con este item en base de datos" });
+  CountGlobal.current = CountGlobal.current + 1;
+  completedTasks += 1;
+  if (completedTasks % updateThreshold === 0 || completedTasks === totalTasks) {
+    const progress = (completedTasks / totalTasks) * 100;
+    setProgress(progress);
+  }
+  continue
+}
 // Verificar si ya existe en la BD o en la lista de inserción
-if (!existingRecordsMap.has(recordKey) && !recordsToInsertMap.has(recordKey)) {
+
+if (!recordsToInsertMap.has(recordKey) ) {
   let supplierId;
-  const domainExists = await selectSuppliers({ page: 1, limit: 1, equals: { name: supplier_name } });
+
+  
+  /*const domainExists = await selectSuppliers({ page: 1, limit: 1, equals: { name: supplier_name } });
 
   if (!domainExists[0] || domainExists[0].name !== supplier_name) {
     await insertSupplier({ name: supplier_name });
@@ -803,7 +871,20 @@ if (!existingRecordsMap.has(recordKey) && !recordsToInsertMap.has(recordKey)) {
     supplierId = domain.supplier_id;
   } else {
     supplierId = domainExists[0].supplier_id;
-  }
+  }*/
+  
+  supplierId = supplierMap.get(supplier_name);
+
+    if (supplierId === undefined) {
+      // No existía: lo creamos y extraemos SOLO el supplier_id
+      await insertSupplier({ name: supplier_name });
+      // El getSupplier devuelve el objeto completo, de él coges únicamente el ID:
+      const { supplier_id } = await getSupplier("", "", supplier_name);
+      supplierId = supplier_id;
+
+      // Guardas solo el número en el Map para futuras iteraciones
+      supplierMap.set(supplier_name, supplierId);
+    }
 
   const unitPriceParsed = Math.round(parseFloat(normalizeNumber(String(unit_price))) * 100);
 
@@ -1417,7 +1498,7 @@ const [edit,setEdit] = useState(false)
        
         <HStack position="relative" align="start" justify="flex-start" textAlign="start">
     
-        <Input value={Datafilter} onClick={() => setDatafilter()} onBlur={(e) => SearchFilter(e)} mt={2} width={iSmallScreen ? "60%" : "30%"} border="1px" borderColor="gray.500" height="80%" isDisabled={!showDatabaseData} placeholder={selectedTable === "Registros" ? "Orden de Compra" : selectedTable === "Materiales" ? "Codigo de Material" : "Nombre Proveedor"} ></Input>
+        <Input value={Datafilter} onClick={() => setDatafilter()} onKeyDown={(e) => {if(e.key === "Enter"){SearchFilter(e)}}} onBlur={(e) => SearchFilter(e)} mt={2} width={iSmallScreen ? "60%" : "30%"} border="1px" borderColor="gray.500" height="80%" isDisabled={!showDatabaseData} placeholder={selectedTable === "Registros" ? "Orden de Compra" : selectedTable === "Materiales" ? "Codigo de Material" : "Nombre Proveedor"} ></Input>
        
        
       

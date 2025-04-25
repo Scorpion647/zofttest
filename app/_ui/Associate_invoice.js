@@ -25,7 +25,7 @@ import { selectSingleSupplier } from "../_lib/database/suppliers";
 import { selectSingleSupplierEmployee } from "../_lib/database/supplier_employee";
 import { getData } from "../_lib/database/app_data";
 import { selectBills, selectByPurchaseOrder, selectSingleBill } from "../_lib/database/base_bills";
-import { deleteInvoiceDocs, insertInvoice, insertInvoiceDoc, selectInvoice_data, selectSingleInvoice, updateInvoice } from "../_lib/database/invoice_data";
+import { deleteInvoice, deleteInvoiceDocs, insertInvoice, insertInvoiceDoc, selectInvoice_data, selectSingleInvoice, updateInvoice } from "../_lib/database/invoice_data";
 import { match } from "assert";
 import { updateMaterial, insertMaterial, selectMaterials } from "../_lib/database/materials";
 import { GrDocumentPdf } from "react-icons/gr";
@@ -1259,6 +1259,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
     const duplicatePositions = new Map();
     const incompleteRows = [];
     let id;
+    let copia = 0
     let suname = "";
     let email = "";
     let hasCompleteRow = false;
@@ -1322,6 +1323,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
               const newInvoice = await insertInvoice({ supplier_id: supplier_id, state: "pending"},selectedFile);
             console.log("se creooooo: ", newInvoice.invoiceData[0].invoice_id)
             id = newInvoice.invoiceData[0].invoice_id;
+            copia = 1
             }catch (error) {
               console.error('Error completo:', error);
               if (error.message) {
@@ -1335,6 +1337,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
             const newInvoice = await insertInvoice({ supplier_id: supplier_id, state: "pending"});
             console.log("se creooooo: ", newInvoice.invoiceData[0].invoice_id)
             id = newInvoice.invoiceData[0].invoice_id;
+            copia = 1
           }
         }
 
@@ -1423,6 +1426,9 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
     if (incompleteRows.length > 0) {
       setIsLoading2(false)
       alert(`ERROR: revise las siguientes filas: ${incompleteRows.join(', ')}`);
+      if(copia === 1){
+        await deleteInvoice(id)
+      }
       return;
     }
 
@@ -1438,6 +1444,9 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
         .map(([pos, indices]) => `Posición ${pos}: Fila(s) ${indices.join(', ')}`)
         .join('\n');
       alert(`Hay posiciones duplicadas:\n${duplicatesMsg}`);
+      if(copia === 1){
+        await deleteInvoice(id)
+      }
       return;
     }
 
@@ -1459,7 +1468,11 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
       if (error.details) {
         console.error('Detalles del error:', error.details);
       }
+      if(copia === 1){
+        await deleteInvoice(id)
+      }
       alert('Error al enviar los registros.  ');
+      
 
       setIsLoading2(false)
     }
@@ -1555,6 +1568,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
+  const [isDesktop1440] = useMediaQuery("(min-width: 1430px)");
 
 
 
@@ -1744,7 +1758,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
             <VStack position="relative" spacing={0}>
 
               {(selectedCurrency.trim().toLowerCase() !== realcurrency.trim().toLowerCase() && sharedState.proveedor !== "") && (
-                <HStack ml={iMediumScreen ? 40 : 20} top={2} height="30px" width="300px" position="absolute">
+                <HStack ml={iMediumScreen ? 40 : 20} top={isDesktop1440 ? 2 : 0}   height="30px" width="300px" position="absolute">
                   <Text fontSize={iMediumScreen ? "50%" : "70%"}>TRM Factura</Text>
                   <Tooltip placement="top" label="Introduzca la trm con la que facturo">
                     <Input fontSize={iMediumScreen ? "70%" : "90%"} onClick={() => updateSharedState("TRMCOP",)} className=" placeholder:text-center" placeholder={realcurrency + " --> " + selectedCurrency} isDisabled={!isActive} type="number" min="1" step="0.0000000001" value={(isTable !== "Create") ? sharedState.TRMCOP : undefined} onBlur={handleTRMCOP} h="25px" width={iMediumScreen ? "40%" : "190px"} bg="white"></Input>
@@ -1780,7 +1794,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
 
           </VStack>
         </HStack>
-        <HStack height="7%" spacing={3}>
+        <HStack  className=" [@media(max-width:1439px)]:pt-1.5 [@media(min-width:1440px)]:pt-0 "  height="7%" spacing={3}>
           <HStack padding="1" spacing={3} width="60%"><Text className=" font-bold  " fontSize={iMediumScreen ? "60%" : "90%"}>Proveedor</Text><Text fontSize={iMediumScreen ? "60%" : "80%"}>{String(sharedState.proveedor).slice(0.25)}</Text>
           </HStack>
 

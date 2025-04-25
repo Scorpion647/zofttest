@@ -20,7 +20,7 @@ import {
   import { deleteBills, insertBills, selectBills, selectSingleBill, updateBills } from '@/app/_lib/database/base_bills';
 import { deleteMaterial, insertMaterial, selectMaterials, selectSingleMaterial, updateMaterial } from '@/app/_lib/database/materials';
 import { insertSupplier, selectSingleSupplier, selectSuppliers, updateSupplier } from '@/app/_lib/database/suppliers';
-
+import { TiWarningOutline } from "react-icons/ti";
 
 
 
@@ -667,6 +667,9 @@ const DeleteButton = async () => {
       <ModalContent bgColor="gray.200">
         <ModalHeader>{Case === "Materiales" ? "Actualizar Material" : (Case === "Registros" ? "Actualizar Registro": "Actualizar Proveedor")}</ModalHeader>
         <ModalCloseButton />
+        {Case === "Proveedores" && (
+          <HStack width="100%" justify="center" align="center" textAlign="center"><Tooltip textColor="black" bgColor="white" label="La actualización de un proveedor desactivará la vinculación de todas las Órdenes de Compra y los usuarios asociados actualmente." placement='top' ><Text cursor="pointer" textDecoration="underline" textDecorationThickness="2px" textDecorationColor="black" className=' font-semibold'>Advertencia</Text></Tooltip></HStack>
+        )}
         <ModalBody>
 
 
@@ -839,6 +842,7 @@ const DeleteButton = async () => {
 
           {Case === "Proveedores" && (
             <>
+              
               <FormControl isRequired>
               <FormLabel>Nombre de Proveedor</FormLabel>
               <HStack>
