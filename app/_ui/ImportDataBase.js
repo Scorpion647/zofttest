@@ -23,7 +23,7 @@ import { FaCloudArrowUp } from "react-icons/fa6";
 import { getMaterial, getRecords, getMaterials, getSuppliers, getSupplier, getRecord } from '@/app/_lib/database/service';
 import { AddIcon, CloseIcon, EditIcon } from '@chakra-ui/icons';
 import { insertBills, selectBills, selectByPurchaseOrder } from '../_lib/database/base_bills';
-import { deleteMaterial, insertMaterial, selectMaterials, selectSingleMaterial, updateMaterial } from '../_lib/database/materials';
+import { deleteMaterial, insertMaterial, selectMaterials, selectMaterialsByCodes, selectSingleMaterial, updateMaterial } from '../_lib/database/materials';
 import { insertSupplier, selectSingleSupplier, selectSuppliers } from '../_lib/database/suppliers';
 import { FaWpforms } from "react-icons/fa6";
 import {Modals} from "@/app/_ui/components/ModalsImport"
@@ -655,7 +655,7 @@ export const ImportDataBase = ({ sharedState, updateSharedState}) => {
     let invalidmaterials = []
     
     let invalidsuppliers = []
-    let cont1 = 0;
+    let cont1 = 1;
     let cont2 = 0;
 
 
@@ -663,10 +663,55 @@ export const ImportDataBase = ({ sharedState, updateSharedState}) => {
     try {
       switch (selectedTable) {
         case 'Registros':
-          existingRecords = await getRecords(1, 100000);
+
+          const pageSize = 1000;
+          while (true) {
+            // 1) Traemos el lote de la página actual
+            const batch = await getRecords(cont1, 1000);
+          
+            // 2) Si ya no hay más registros, salimos del bucle
+            if (!batch || batch.length === 0) break;
+          
+            // 3) Añadimos al array completo
+            existingRecords.push(...batch);
+          
+            // 4) Avanzamos de página
+            cont1++;
+          }
           break;
         case 'Materiales':
-          existingMaterials = await getMaterials(1, 100000);
+          while (true) {
+            // 1) Traemos el lote de la página actual
+            const batch = await getMaterials(cont1, 1000);
+          
+            // 2) Si ya no hay más registros, salimos del bucle
+            if (!batch || batch.length === 0) break;
+          
+            // 3) Añadimos al array completo
+            existingMaterials.push(...batch);
+          
+            // 4) Avanzamos de página
+            cont1++;
+          }
+
+          /*if (totalTasks <= 500) {
+            const codes = data
+            .map(item => item.material_code?.trim())
+            .filter(code => !!code);
+        
+          const uniqueCodes = Array.from(new Set(codes));
+        
+          const result = await selectMaterialsByCodes(uniqueCodes);
+          existingMaterials.push(...result);
+          } else {
+            // 2. Si son muchos, traemos toda la base de datos en lotes de 1000
+            while (true) {
+              const batch = await getMaterials(cont1, 1000);
+              if (!batch || batch.length === 0) break;
+              existingMaterials.push(...batch);
+              cont1++;
+            }
+          }*/
           break;
         case 'Proveedores':
           existingSuppliers = await getSuppliers(1, 10000);
@@ -685,16 +730,52 @@ const duplicateRecords = [];
     const suppliersToInsert = [];
 
 
+
     const materialsMap = new Map(
-  existingMaterials.map(material => {
-    const normalized = String(material.material_code).trim().toLowerCase();
-    return [normalized, material];
-  })
-);
+      existingMaterials.map(mat => {
+        const code = String(mat.material_code).trim().toLowerCase();
+        return [code, mat];
+      })
+    );
+
+    const typeMapping = {
+      "national": "national",
+      "NATIONAL": "national",
+      "foreign": "foreign",
+      "FOREIGN": "foreign",
+      "nationalized": "nationalized",
+      "NATIONALIZED": "nationalized",
+      "other": "other",
+      "OTHER": "other",
+      "NACIONAL": "national",
+      "nacional": "national",
+      "EXTRANJERO": "foreign",
+      "extranjero": "foreign",
+      "NACIONALIZADO": "nationalized",
+      "nacionalizado": "nationalized",
+      "OTRO": "other",
+      "otro": "other",
+    };
+
+const materialsToUpdate = [];
+const newCodes = new Set();      // para evitar duplicados en el insert
+const invalidMaterials = [];
     
 
 const existingRecordsMap = new Map();
 
+alert(existingMaterials.length)
+if(selectedTable === "Registros"){
+  existingRecords.forEach(record => {
+    // Construimos la clave custom: `${purchase_order}-${item}`
+    const key = `${record.purchase_order}-${record.item}`;
+    
+    // Guardamos en el Map. Como valor puedes almacenar el objeto completo,
+    // o sólo lo que necesites (por ejemplo un booleano o un pequeño objeto).
+    // Aquí lo guardamos entero por si luego quieres acceder a otras props:
+    existingRecordsMap.set(key, record);
+  });
+}
 
 // Crear un mapa para evitar duplicados en recordsToInsert
 const recordsToInsertMap = new Map();
@@ -845,7 +926,7 @@ if (parseFloat(quantity) <= 0) {
   continue
 }
 
-const searchrecord = await selectByPurchaseOrder(purchase_order,parseInt(normalizeNumber(String(position))))
+/*const searchrecord = await selectByPurchaseOrder(purchase_order,parseInt(normalizeNumber(String(position))))
 
 if(searchrecord.length > 0){
   invalidbills.push({ purchase_order, item: position, reason: "Ya existe este OC con este item en base de datos" });
@@ -856,10 +937,21 @@ if(searchrecord.length > 0){
     setProgress(progress);
   }
   continue
-}
+}*/
 // Verificar si ya existe en la BD o en la lista de inserción
+if(existingRecordsMap.has(recordKey)){
+  invalidbills.push({ purchase_order, item: position, reason: "Ya existe este OC con este item en base de datos" });
+  CountGlobal.current = CountGlobal.current + 1;
+  completedTasks += 1;
+  if (completedTasks % updateThreshold === 0 || completedTasks === totalTasks) {
+    const progress = (completedTasks / totalTasks) * 100;
+    setProgress(progress);
+  }
+  continue
+}
 
-if (!recordsToInsertMap.has(recordKey) ) {
+
+if (!recordsToInsertMap.has(recordKey)  ) {
   let supplierId;
 
   
@@ -925,95 +1017,79 @@ if (completedTasks % updateThreshold === 0 || completedTasks === totalTasks) {
   setProgress(progress);
 }
       } else if (selectedTable === "Materiales") {
-
-
         const [material_code, subheading, type, measurement_unit] = row;
-
-
         
-console.log('Row:', row);
-console.log('material_code:', material_code);
+  const normalized = String(material_code || "").trim().toLowerCase();
 
-if (!material_code) {
-  invalidmaterials.push({
-    material_code: "VACIO",
-    subheading: subheading,
-    types: (type ? String(type) : "VACIO"),
-    measurement_unit: (measurement_unit ? measurement_unit : "VACIO")
-  });
-  CountGlobal.current = CountGlobal.current + 1;
-  completedTasks += 1;
-  continue;
-}
-
-        const normalizedMaterialCode = String(material_code).trim().toLowerCase();
-
-        if (materialsToInsert.some(material => 
-          String(material.material_code).trim().toLowerCase() === normalizedMaterialCode)) {
-            CountGlobal.current = CountGlobal.current + 1;
+  // Validación de código vacío
+  if (!normalized) {
+    invalidMaterials.push({
+      material_code: "VACIO",
+      subheading: subheading || "VACIO",
+      type: type || "VACIO",
+      measurement_unit: measurement_unit || "VACIO"
+    });
     completedTasks++;
-      continue; // Si ya existe, salta esta iteración
-    }
-
-
-if (materialsMap.has(normalizedMaterialCode)) {
-    CountGlobal.current = CountGlobal.current + 1;
-    completedTasks++;
+    CountGlobal.current++;
     continue;
   }
 
-        const materialArgs = { material_code: material_code };
+  // Si ya existe en DB → tal vez UPDATE
+  if (materialsMap.has(normalized)) {
+    const existing = materialsMap.get(normalized);
+    const existingType = existing.type?.toLowerCase();
+    const existingUnit = existing.measurement_unit?.toLowerCase();
+    const newType = typeMapping[type] || existingType;
+    const newUnit = measurement_unit || existingUnit;
 
-        if (subheading) {
-          if (String(subheading).length === 10) {
-            materialArgs.subheading = String(subheading);
-          } 
-        }
+    const needsUpdate =
+      existingType !== newType ||
+      existingUnit !== String(newUnit).trim().toLowerCase();
 
-        const typeMapping = {
-          "national": "national",
-          "NATIONAL": "national",
-          "foreign": "foreign",
-          "FOREIGN": "foreign",
-          "nationalized": "nationalized",
-          "NATIONALIZED": "nationalized",
-          "other": "other",
-          "OTHER": "other",
-          "NACIONAL": "national",
-          "nacional": "national",
-          "EXTRANJERO": "foreign",
-          "extranjero": "foreign",
-          "NACIONALIZADO": "nationalized",
-          "nacionalizado": "nationalized",
-          "OTRO": "other",
-          "otro": "other",
-        };
-        
+    if (needsUpdate) {
+      materialsToUpdate.push({
+        id: existing.id,           // o la PK que uses
+        type: newType,
+        measurement_unit: newUnit
+      });
+    }
+    completedTasks++;
+    CountGlobal.current++;
+    continue;
+  }
 
-        if (typeMapping[type]) {
-          materialArgs.type = typeMapping[type]
-        }
+  // Si ya lo marcamos para insertar → SKIP
+  if (newCodes.has(normalized)) {
+    completedTasks++;
+    CountGlobal.current++;
+    continue;
+  }
 
-        if (measurement_unit) materialArgs.measurement_unit = measurement_unit;
+  // Construir objeto para INSERT
+  const materialArgs = {
+    material_code: String(material_code).trim()
+  };
 
-        const revisar = await selectMaterials({page: 1, limit: 1, equals: {material_code: material_code}})
-        if (revisar[0]?.material_code === material_code) {
-          const updateNeeded = revisar[0]?.type !== materialArgs.type || revisar[0]?.measurement_unit !== materialArgs.measurement_unit;
-          if (updateNeeded) {
-            //poner que suscede al actualizar
-          }
-         
-        } else {
-          materialsToInsert.push(materialArgs);
-        }
-        CountGlobal.current = CountGlobal.current + 1;
-        completedTasks += 1;
+  if (subheading && String(subheading).length === 10) {
+    materialArgs.subheading = String(subheading);
+  }
+  if (typeMapping[type]) {
+    materialArgs.type = typeMapping[type];
+  }
+  if (measurement_unit) {
+    materialArgs.measurement_unit = measurement_unit;
+  }
 
+  materialsToInsert.push(materialArgs);
+  newCodes.add(normalized);
 
-        if (completedTasks % updateThreshold === 0 || completedTasks === totalTasks) {
-          const progress = (completedTasks / totalTasks) * 100;
-          setProgress(progress);
-        }
+  completedTasks++;
+  CountGlobal.current++;
+
+  // Actualizar progreso
+  if (completedTasks % updateThreshold === 0 || completedTasks === totalTasks) {
+    setProgress((completedTasks / totalTasks) * 100);
+  }
       } else if (selectedTable === "Proveedores") {
 
         const [domain, name] = row;
@@ -1569,7 +1645,7 @@ const [edit,setEdit] = useState(false)
                 ? [
                   { type: 'text' },
                   { type: 'text' },
-                  { type: 'dropdown', source: ['national', 'foreign'] },
+                  { type: 'text' },
                   { type: 'text' }
                 ]
                 : selectedTable === 'Proveedores'
