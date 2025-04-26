@@ -764,7 +764,7 @@ const invalidMaterials = [];
 
 const existingRecordsMap = new Map();
 
-alert(existingMaterials.length)
+
 if(selectedTable === "Registros"){
   existingRecords.forEach(record => {
     // Construimos la clave custom: `${purchase_order}-${item}`
