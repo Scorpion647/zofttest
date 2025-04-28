@@ -27,7 +27,7 @@ import { deleteMaterial, insertMaterial, selectMaterials, selectMaterialsByCodes
 import { insertSupplier, selectSingleSupplier, selectSuppliers } from '../_lib/database/suppliers';
 import { FaWpforms } from "react-icons/fa6";
 import {Modals} from "@/app/_ui/components/ModalsImport"
-
+import { FixedSizeList as VirtualizedList } from 'react-window';
 
 
 // Simulamos una función para obtener datos de una base de datos
@@ -680,7 +680,17 @@ export const ImportDataBase = ({ sharedState, updateSharedState}) => {
           }
           break;
         case 'Materiales':
-          while (true) {
+          const codes = data
+            .map(item => item[0]?.toString().trim()) // Accede al material_code que está en la posición 0
+            .filter(code => !!code); // Elimina valores vacíos o undefined
+
+          const uniqueCodes = Array.from(new Set(codes));
+          console.log("Códigos a consultar:", uniqueCodes);
+
+          existingMaterials = await selectMaterialsByCodes(uniqueCodes);
+          console.log("Códigos consultados:", existingMaterials);
+
+          /*while (true) {
             // 1) Traemos el lote de la página actual
             const batch = await getMaterials(cont1, 1000);
           
@@ -692,7 +702,7 @@ export const ImportDataBase = ({ sharedState, updateSharedState}) => {
           
             // 4) Avanzamos de página
             cont1++;
-          }
+          }*/
 
           /*if (totalTasks <= 500) {
             const codes = data
@@ -1022,20 +1032,21 @@ if (completedTasks % updateThreshold === 0 || completedTasks === totalTasks) {
   const normalized = String(material_code || "").trim().toLowerCase();
 
   // Validación de código vacío
-  if (!normalized) {
-    invalidMaterials.push({
-      material_code: "VACIO",
-      subheading: subheading || "VACIO",
-      type: type || "VACIO",
-      measurement_unit: measurement_unit || "VACIO"
-    });
-    completedTasks++;
-    CountGlobal.current++;
-    continue;
+  if (!normalized || !material_code) {
+    invalidmaterials.push({ material_code: "VACIO", subheading: safe(subheading),type: safe(type),measurement_unit: safe(measurement_unit), reason: "Falta material" });
+  CountGlobal.current++;
+  completedTasks += 1;
+  if (completedTasks % updateThreshold === 0 || completedTasks === totalTasks) {
+    const progress = (completedTasks / totalTasks) * 100;
+    setProgress(progress);
   }
+  continue
+  }
+
 
   // Si ya existe en DB → tal vez UPDATE
   if (materialsMap.has(normalized)) {
+    invalidmaterials.push({ material_code, subheading: safe(subheading),type: safe(type),measurement_unit: safe(measurement_unit), reason: "material ya existe" });
     const existing = materialsMap.get(normalized);
     const existingType = existing.type?.toLowerCase();
     const existingUnit = existing.measurement_unit?.toLowerCase();
@@ -1053,8 +1064,12 @@ if (completedTasks % updateThreshold === 0 || completedTasks === totalTasks) {
         measurement_unit: newUnit
       });
     }
-    completedTasks++;
     CountGlobal.current++;
+  completedTasks += 1;
+  if (completedTasks % updateThreshold === 0 || completedTasks === totalTasks) {
+    const progress = (completedTasks / totalTasks) * 100;
+    setProgress(progress);
+  }
     continue;
   }
 
@@ -1192,9 +1207,10 @@ if (completedTasks % updateThreshold === 0 || completedTasks === totalTasks) {
             if (invalidbills.length > 0) {
               acc.push([data.purchase_order, data.item, data.reason, "Bills"]);
             }
-  
+            
             else if (invalidmaterials.length > 0) {
-              acc.push([data.material_code, data.subheading, data.type, data.measurement_unit, "Material"]);
+
+              acc.push([data.material_code, data.subheading, data.type, data.measurement_unit, data.reason, "Material"]);
             }
 
             else if (invalidsuppliers.length > 0) {
@@ -1211,7 +1227,7 @@ if (completedTasks % updateThreshold === 0 || completedTasks === totalTasks) {
           invalidsuppliers
         );
       
-
+        console.log("Aqui esta guardado: ",groupedArray)
         IsgroupedBillsArray1(groupedArray);
         setShowModal(true);
       }
@@ -1229,10 +1245,59 @@ if (completedTasks % updateThreshold === 0 || completedTasks === totalTasks) {
 
  
 
- 
 
+    const Row = ({ index, style }) => {
+      const [material_code, subheading, type, measurement_unit, reason] = groupedBillsArray1[index];
+  
+      return (
+        <Box
+        style={{ ...style, flex: "1", width: "600px", whiteSpace: "nowrap", alignContent: "center" }}
+          key={index}
+          border="1px solid #ccc"
+          borderRadius="md"
+          padding="2"
+          backgroundColor="gray.100"
+        >
+          <HStack justifyContent="space-between" spacing={5}>
+            <VStack flex="1" minW="0">
+              <p><strong>CODIGO</strong></p>
+              <p>{material_code}</p>
+            </VStack>
+            <VStack flex="1" minW="0">
+              <p><strong>PA</strong></p>
+              <p>{subheading}</p>
+            </VStack>
+            <VStack flex="1" minW="0">
+              <p><strong>TIPO</strong></p>
+              <p>{type}</p>
+            </VStack>
+            <VStack flex="1" minW="0">
+              <p><strong>UC</strong></p>
+              <p>{measurement_unit}</p>
+            </VStack>
+            <VStack flex="1" minW="0">
+              <p><strong>RAZON</strong></p>
+              <p>{reason}</p>
+            </VStack>
+          </HStack>
+        </Box>
+      );
+    };
 
-
+  function safe(val){
+    // 1. Null o undefined
+    if (val == null) {
+      return "VACIO";
+    }
+    // 2. Objetos (incluye arrays)  
+    if (typeof val === "object") {
+      return "VACIO";
+    }
+    // 3. Strings o números  
+    const s = String(val).trim();
+    return s === "" ? "VACIO" : s;
+  
+  }
 
   const fetchData = async () => {
     setisloading(true)
@@ -1473,7 +1538,7 @@ const [edit,setEdit] = useState(false)
               {groupedBillsArray1.map(([purchase_order, item, reason], index) => (
                 <>
                 {purchase_order && (
-                  <Box key={index} border="1px solid #ccc" borderRadius="md" padding="2" backgroundColor="gray.100">
+                  <Box key={index} border="1px solid #ccc"  borderRadius="md" padding="2" backgroundColor="gray.100">
                   <HStack spacing={5}>
                     <p><strong>OC:</strong> {purchase_order}</p>
                     <p><strong>ITEM:</strong> {item}</p>
@@ -1489,22 +1554,19 @@ const [edit,setEdit] = useState(false)
       )}
 
       {/* Mostrar el título y registros para "Material" */}
-      {groupedBillsArray1.length > 0 && groupedBillsArray1[0][4] === "Material" && (
+      {groupedBillsArray1.length > 0 && groupedBillsArray1[0][5] === "Material" && (
         <>
           <p className="font-bold mb-2">Materiales</p>
-          <Box maxH="230px" overflowY="auto" p="2" border="1px solid #ddd" borderRadius="md">
-            <VStack spacing={3} align="stretch">
-              {groupedBillsArray1.map(([material_code, subheading, type, measurement_unit], index) => (
-                <Box key={index} border="1px solid #ccc" borderRadius="md" padding="2" backgroundColor="gray.100">
-                  <HStack spacing={5}>
-                    <p><strong>CODIGO:</strong> {material_code}</p>
-                    <p><strong>PA:</strong> {subheading}</p>
-                    <p><strong>TIPO:</strong> {type}</p>
-                    <p><strong>UC:</strong> {measurement_unit}</p>
-                  </HStack>
-                </Box>
-              ))}
-            </VStack>
+          <Box maxH="230px" display="flex"   p="2" border="1px solid #ddd" borderRadius="md">
+          <VirtualizedList
+        
+        height={230} // Altura total del contenedor
+        itemCount={groupedBillsArray1.length} // Número total de elementos
+        itemSize={70} // Altura de cada fila (ajusta según tu diseño)
+        width="100%" // Ancho total
+      >
+        {Row}
+      </VirtualizedList>
           </Box>
         </>
       )}
@@ -1513,7 +1575,7 @@ const [edit,setEdit] = useState(false)
       {groupedBillsArray1.length > 0 && groupedBillsArray1[0][2] === "Suppliers" && (
         <>
           <p className="font-bold mb-2">Proveedores</p>
-          <Box maxH="230px" overflowY="auto" p="2" border="1px solid #ddd" borderRadius="md">
+          <Box  maxH="230px" overflowY="auto" p="2" border="1px solid #ddd" borderRadius="md">
             <VStack spacing={3} align="stretch">
               {groupedBillsArray1.map(([domain, name], index) => (
                 <Box key={index} border="1px solid #ccc" borderRadius="md" padding="2" backgroundColor="gray.100">

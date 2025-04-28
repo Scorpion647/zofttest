@@ -209,7 +209,7 @@ export const Associate_invoice = ({ setisTable, isTable, sharedState, updateShar
   
       // Actualización intermedia de estados
       updateSharedState('pesototal', parseFloat(total.toFixed(2)));
-      updateSharedState('bultos', parseFloat(bultos.toFixed(0)));
+      updateSharedState('bultos', parseFloat(bultos.toFixed(2)));
     } catch (error) {
       console.error('Error in pruebas function:', error);
     } finally {

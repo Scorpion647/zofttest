@@ -134,3 +134,28 @@ export async function deleteMaterial(
     }
   }
 }
+
+export async function selectMaterialsByCodes(
+  materialCodes: string[]
+): Promise<Tables<"materials">[]> {
+
+  const uniqueCodes = Array.from(new Set(materialCodes));
+
+  const results: Tables<"materials">[] = [];
+
+
+  for (let i = 0; i < uniqueCodes.length; i += 200) {
+    const chunk = uniqueCodes.slice(i, i + 200);
+
+    const { data, error } = await supabase
+      .from("materials")
+      .select("*")
+      .filter("material_code", "in", `(${chunk.map(c => `"${c}"`).join(",")})`);
+
+    if (error) throw error;
+    if (data) results.push(...data);
+  }
+
+  return results;
+}
+
