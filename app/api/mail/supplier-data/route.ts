@@ -65,9 +65,22 @@ export async function POST(request: Request) {
     return formattedDate;
   }
 
+  const { data: mailList, error: supabaseError } = await supabase
+    .from("email_recipients")
+    .select();
+
+  if (supabaseError) {
+    console.error(supabaseError);
+  }
+
+  const addresses =
+    mailList ?
+      [email_data.email].concat(mailList.map((mail) => mail.email))
+    : [email_data.email];
+
   const { error } = await resend.emails.send({
     from: "Zofzf team <team@zofzf.online>",
-    to: [email_data.email],
+    to: addresses,
     subject: data.subject ?? "Aviso",
     react: EmailTemplate({
       header: data.header,
