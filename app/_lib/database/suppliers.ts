@@ -37,7 +37,7 @@ export async function selectSuppliers(
       }
     }
   } else if (params.search && params.search.trim().length > 0) {
-    query = query.textSearch("supplier_search", params.search, {
+    query = query.textSearch("name", params.search, {
       type: "websearch",
     });
   }
@@ -101,18 +101,17 @@ export async function updateSupplier(
 }
 
 export async function deleteSupplier(
-  supplier_id: Arrayable<Tables<"suppliers">["supplier_id"]>
+  supplier_id: Arrayable<Tables<"suppliers">["supplier_id"]>,
 ) {
   const { error } = await supabase
     .from("suppliers")
     .delete()
     .in(
       "supplier_id",
-      Array.isArray(supplier_id) ? supplier_id : [supplier_id]
+      Array.isArray(supplier_id) ? supplier_id : [supplier_id],
     );
 
   if (error) {
     throw error;
   }
 }
-
