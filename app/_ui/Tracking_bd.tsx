@@ -137,7 +137,80 @@ export const Tracking_bd = () => {
         FetchData()
     },[])
 
+    /*
 
+worksheet.columns = [
+                    { header: 'OC', key: 'OC' },
+                    { header: 'ITEMS', key: 'ITEMS' },
+                    { header: 'CODIGO', key: 'CODIGO' },
+                    { header: 'DESCRIPCION', key: 'DESCRIPCION' },
+                    { header: 'CANT', key: 'CANT' },
+                    { header: 'UND', key: 'UND' },
+                    { header: 'NOTA', key: 'NOTA' },
+                    { header: 'PROVEEDOR', key: 'PROVEEDOR' },
+                    { header: 'FOB_UNIT', key: 'FOB_UNIT' },
+                    { header: 'FACTURA', key: 'FACTURA' },
+                    { header: 'FMM', key: 'FMM' },
+                    { header: 'PA', key: 'PA' },
+                    { header: 'UC', key: 'UC' },
+                    { header: 'TRM', key: 'TRM' },
+                    { header: 'FOB', key: 'FOB' },
+                    { header: 'COP_UNIT', key: 'COP_UNIT' },
+                    { header: 'COP_TOTAL', key: 'COP_TOTAL' },
+                    { header: 'TIPO', key: 'TIPO' },
+                    { header: 'EMBALAJE', key: 'EMBALAJE' },
+                    { header: 'PB', key: 'PB' },
+                    { header: 'PN', key: 'PN' },
+                    { header: 'BULTOS', key: 'BULTOS' },
+                    { header: 'CODBANDERA', key: 'CODBANDERA' },
+                    { header: 'CODPAIS_ORIGEN', key: 'CODPAIS_ORIGEN' },
+                    { header: 'CODPAIS_COMPRA', key: 'CODPAIS_COMPRA' },
+                    { header: 'PAIS_DESTINO', key: 'PAIS_DESTINO' },
+                    { header: 'PAIS_PROCEDENCIA', key: 'PAIS_PROCEDENCIA' },
+                    { header: 'TRANSPORTE', key: 'TRANSPORTE' },
+                    { header: 'CONVERSION', key: 'CONVERSION' },
+                ];
+
+
+    worksheet.addRow({
+                                        OC: parseInt(bill[0].purchase_order),
+                                        ITEMS: bill[0].item,  // Ordena por el valor de ITEM
+                                        CODIGO: material,
+                                        DESCRIPCION: descripcion,
+                                        CANT: sup.billed_quantity,
+                                        UND: bill[0].measurement_unit,
+                                        NOTA: undefined,
+                                        PROVEEDOR: supplier.name,
+                                        FOB_UNIT: parseFloat(((sup.billed_unit_price / 100) / (sup.billed_currency === "USD" ? 1 : sup.trm)).toFixed(8)),
+                                        FACTURA: sup.bill_number,
+                                        FMM: invo.fmm,
+                                        PA: subpartida,
+                                        UC: measurement,
+                                        TRM: sup.trm,
+                                        FOB: parseFloat(((((sup.billed_unit_price / 100) * sup.billed_quantity) / (sup.billed_currency === "USD" ? 1 : sup.trm))).toFixed(2)),
+                                        COP_UNIT: (sup.billed_unit_price / 100),
+                                        COP_TOTAL: ((sup.billed_unit_price / 100) * sup.billed_quantity),
+                                        TIPO: tipo,
+                                        EMBALAJE: "PK",
+                                        PB: sup.gross_weight,
+                                        PN: sup.gross_weight,
+                                        BULTOS: sup.packages,
+                                        CODBANDERA: 169,
+                                        CODPAIS_ORIGEN: 169,
+                                        CODPAIS_COMPRA: 169,
+                                        PAIS_DESTINO: 953,
+                                        PAIS_PROCEDENCIA: 169,
+                                        TRANSPORTE: 3,
+                                        CONVERSION: conversion,
+                                    });
+    */
+
+
+   const suppppp = async () => {
+    setIsLoading1(true)
+    setError("");
+    onOpen();
+   }
 
 
     const Supp_Export = async () => {
@@ -146,7 +219,7 @@ export const Tracking_bd = () => {
     setError("");
     onOpen();
 
-        let data: MiObjeto = { page: 1, limit: 8, equals: { state: "approved" }, orderBy: { column: "updated_at", options: { ascending: true } } };
+        let data: MiObjeto = { page: 1, limit: 1000, equals: { state: "approved" }, orderBy: { column: "updated_at", options: { ascending: true } } };
         if (InputValue !== "") {
             try {
               // Espera a que se resuelva la búsqueda del proveedor más cercano
@@ -180,25 +253,23 @@ export const Tracking_bd = () => {
               console.error("Error al procesar el proveedor:", error);
             }
         }
-    
-        if (Selectmonth !== "all") {
-            //alert("cambio de mes");
-            //data.equals.datem = 8;
-        }
-    
-        if (Selectyear !== "all") {
-            //alert("cambio de año");
-            //data.equals.dateyear = 2012;
-        }
-    
+
+        console.log("Primera parte");
         try {
-            const invoice = await selectInvoice_data(data);
-            if (invoice) {
+            let invoice = []
+            while(true){
+            const chunk = await selectInvoice_data(data);
+            if(!chunk || chunk.length === 0) break
+            invoice.push(...chunk)
+            console.log(data.page)
+            data.page = data.page + 1
+            }
+            console.log("Segunda parte");
+            if (invoice.length !== 0) {
                 setsavedata(data);
                 let workbook = new ExcelJS.Workbook();
                 let worksheet = workbook.addWorksheet('Suppliers Data');
-                let rowIndex = 1;
-    
+
                 // Escribe las cabeceras
                 worksheet.columns = [
                     { header: 'OC', key: 'OC' },
@@ -231,7 +302,7 @@ export const Tracking_bd = () => {
                     { header: 'TRANSPORTE', key: 'TRANSPORTE' },
                     { header: 'CONVERSION', key: 'CONVERSION' },
                 ];
-    
+                console.log("Tercera parte");
                 for (const invo of invoice) {
                     try {
                         const data = await selectSupplierDataByInvoiceID(invo.invoice_id, 1, 250);
@@ -243,7 +314,6 @@ export const Tracking_bd = () => {
                         }
                         
                         try {
-                            const record = await selectSingleBill(data[0].base_bill_id);
                             const supplier = await selectSingleSupplier(invo.supplier_id);
     
                             // Ahora los datos se organizan por ITEMS
@@ -261,54 +331,20 @@ export const Tracking_bd = () => {
                                     let tipo = "";
                                     let conversion = 0;
                                     const exits_material = await selectSingleMaterial(bill[0].material_code);
-                                    if (exits_material) {
-                                            material = exits_material.material_code
-                                        try{
-                                            const check = await selectSingleMaterial(`${bill[0].material_code}-N`);
-                                            console.log("hola7")
-                                        if (check.material_code === `${bill[0].material_code}-N`) {
-                                            material = `${bill[0].material_code}-N`;
-                                            if (!check.subheading) return;
-                                            subpartida = parseInt(check.subheading);
-                                            if (check.measurement_unit) measurement = check.measurement_unit;
-                                            if (check.type) {
-                                                if (check.type === "national") {
-                                                    tipo = "NACIONAL";
-                                                } else if (check.type === "nationalized") {
-                                                    tipo = "NACIONALALIZADO";
-                                                } else if (check.type === "other") {
-                                                    tipo = "OTRO";
-                                                }
-                                            }
-                                        } 
-                                        }catch{
-                                            console.log("hola0")
-                                        console.log("hola1")
-
-                                            console.log("hola2")
-                                            if (!exits_material.subheading) return;
-                                            console.log("hola3")
-                                            subpartida = parseInt(exits_material.subheading);
-                                            console.log("hola4")
-                                            if (exits_material.measurement_unit) measurement = exits_material.measurement_unit;
-                                            console.log("hola5")
-                                            if (exits_material.type) {
-                                                if (exits_material.type === "national") {
-                                                    tipo = "NACIONAL";
-                                                } else if (exits_material.type === "nationalized") {
-                                                    tipo = "NACIONALALIZADO";
-                                                } else if (exits_material.type === "other") {
-                                                    tipo = "OTRO";
-                                                } else if (exits_material.type === "foreign") {
-                                                    tipo = "EXTRANJERO";
-                                                }
-                                            }
-                                            console.log("hola6")
+                                    subpartida = parseInt(exits_material.subheading || "1234567891");
+                                    measurement = exits_material.measurement_unit || "VACIO";
+                                    if (exits_material.type) {
+                                        if (exits_material.type === "national") {
+                                            tipo = "NACIONAL";
+                                        } else if (exits_material.type === "nationalized") {
+                                            tipo = "NACIONALALIZADO";
+                                        } else if (exits_material.type === "other") {
+                                            tipo = "OTRO";
                                         }
-                                        
-                                        conversion = (measurement === 'KG' || measurement === 'KGM') ? parseFloat((sup.gross_weight / sup.billed_quantity).toFixed(8)) : (['U', 'L'].includes(measurement) ? 1 : 0);
-                                        descripcion = bill[0].description || "";
                                     }
+                                    conversion = (measurement === 'KG' || measurement === 'KGM') ? parseFloat((sup.gross_weight / sup.billed_quantity).toFixed(8)) : (['U', 'L'].includes(measurement) ? 1 : 0);
+                                    descripcion = bill[0].description || "";
+                                    
     
                                     // Añadir la fila al archivo Excel
                                     worksheet.addRow({
@@ -367,6 +403,7 @@ export const Tracking_bd = () => {
         } catch (error) {
             setError('Error al generar el archivo de seguimiento.');
             console.error('Error al obtener los datos de las facturas:', error);
+            onClose();
         }finally{
             setIsLoading1(false);
             onClose();
@@ -445,7 +482,6 @@ export const Tracking_bd = () => {
                                 
                                 
                                 const supplier = await selectSingleSupplier(invo.supplier_id)
-                                const supplierdata = await selectSupplierData({limit: 1, page: 200, equals: {invoice_id: invo.invoice_id}})
                                 let subtotal = 0;
                                 let fob = 0;
                                 console.log("Tamaño de la factura: ",data.length)

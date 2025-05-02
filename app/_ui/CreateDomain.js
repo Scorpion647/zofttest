@@ -6,9 +6,7 @@ import { Menu,
     MenuList,
     MenuItem,Flex, Box, VStack, HStack, Button, Text, Input, Icon, useMediaQuery } from "@chakra-ui/react";
 import { SearchIcon, CloseIcon, AddIcon, ArrowBackIcon, ArrowForwardIcon } from "@chakra-ui/icons";
-import { IoMenu } from "react-icons/io5";
-import { IoEllipsisVerticalSharp } from "react-icons/io5";
-import { getSuppliers } from '@/app/_lib/database/service';
+
 import { Gettempleados } from '@/app/_ui/Gettempleados'
 import { selectSuppliers } from "../_lib/database/suppliers";
 
@@ -32,10 +30,13 @@ export const CreatelargeDomain = () => {
           if (isFetchingRef.current) return; 
           isFetchingRef.current = true; 
           let data = {};
+
           try {
 
             if(search){
+
                 data = await selectSuppliers({page: currentPage, limit: 8, equals: {}, orderBy: {column: "name", options: {ascending: true}}, search: search});
+
             }else{
                 data = await selectSuppliers({page: currentPage, limit: 8, equals: {}, orderBy: {column: "name", options: {ascending: true}}});
             }
@@ -96,24 +97,13 @@ export const CreatelargeDomain = () => {
         return <Gettempleados supplier={selectedSupplier} regresar={ChangeEmployeed}/>
     }
 
-    const handleIconClick = (supplierId) => {
-        // Puedes usar este ID para mostrar el menú
-    };
-    
-    const handleOptionOne = () => {
-        alert("Opción 1 seleccionada");
-    };
-    
-    const handleOptionTwo = () => {
-        alert("Opción 2 seleccionada");
-    };
     return (
         <>
             {hola && (
                 <>
                     <Flex w="100%" className="mt-3 mb-3" justify="space-between" align="center">
                         <HStack>
-                            <Input width='80%' value={isInput} border='1px' backgroundColor='white' onChange={(e) => setisInput(e.target.value)} placeholder="Proveedor" />
+                            <Input width='80%' value={isInput} border='1px' backgroundColor='white' onChange={(e) => setisInput(e.target.value)} onKeyDown={(e) => {if(e.key === "Enter"){setSearch(isInput)}}} placeholder="Proveedor" />
                             <Button colorScheme='teal' onClick={() => setSearch(isInput)} backgroundColor='#F1D803'>
                                 <SearchIcon w={5} h={5} color='black' />
                             </Button>

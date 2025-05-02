@@ -26,7 +26,7 @@ export async function selectSuppliers(
 ) {
   let query = supabase.from("suppliers").select();
 
-  if (params.equals) {
+  if (params.equals && !params.search) {
     const keys = Object.keys(params.equals) as Array<
       keyof typeof params.equals
     >;
@@ -37,9 +37,8 @@ export async function selectSuppliers(
       }
     }
   } else if (params.search && params.search.trim().length > 0) {
-    query = query.textSearch("name", params.search, {
-      type: "websearch",
-    });
+    const term = `%${params.search.trim()}%`;
+  query = query.ilike('name', term);             
   }
 
   if (params.orderBy) {
