@@ -74,7 +74,7 @@ export async function POST(request: Request) {
   }
 
   const addresses =
-    mailList ?
+    mailList && data.type === "Actualizacion" && data.header === "Aprobado" ?
       [email_data.email].concat(mailList.map((mail) => mail.email))
     : [email_data.email];
 

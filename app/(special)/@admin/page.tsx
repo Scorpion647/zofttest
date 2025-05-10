@@ -58,6 +58,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { FaUserCheck } from "react-icons/fa";
 import { IoMenu } from "react-icons/io5";
+import EmailListModal from "@/app/_ui/components/ModalMenu"
 
 function _formatCurrency(number: number) {
   return new Intl.NumberFormat("es-ES", {
@@ -83,6 +84,7 @@ export default function Admin() {
   const [showRightBox, setShowRightBox] = useState(false);
   const [PendingUsers, setPendingUsers] = useState(0)
   const [Pendingbills, setPendingbills] = useState(0)
+  const { isOpen: IsOpenmenu, onOpen: OnOpenmenu, onClose: OnClosemenu } = useDisclosure();
 
   const obtenerValorDesdeDB = async () => {
     try {
@@ -325,8 +327,10 @@ export default function Admin() {
     <Icon as={IoMenu} w={5} h={5} color="black" />
   </MenuButton>
                     <MenuList>
-                      <MenuItem icon={<AddIcon color="black" />}>
-                        Colaboradores
+                      <MenuItem icon={<AddIcon color="black" />}
+                        onClick={OnOpenmenu}
+                      >
+                        Emails de Reenvio
                       </MenuItem>
                       <MenuItem
                         onClick={bring_TRM}
@@ -657,6 +661,14 @@ export default function Admin() {
                 </ModalFooter>
               </ModalContent>
             </Modal>
+
+            <EmailListModal
+        isOpen={IsOpenmenu}
+        onClose={OnClosemenu}
+      />
+            
+
+            
 
             <Modal isOpen={isOpen} onClose={onClose}>
               <ModalContent>
