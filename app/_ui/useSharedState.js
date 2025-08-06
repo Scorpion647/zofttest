@@ -1,15 +1,15 @@
-import { useState } from 'react';
+import { useState } from "react";
 
 export function useSharedState() {
   const [state, setState] = useState({
     conditionMet: false,
     anotherCondition: false,
     dataList: [],
-    someValue: 'hola',
+    someValue: "hola",
     onVisibilityChange: false,
     columnSum: 0,
     SelectedCellValue: null,
-    cantidadespor: 0,  
+    cantidadespor: 0,
     pesopor: 0,
     bulto: 0,
     bultos: 0,
@@ -33,12 +33,10 @@ export function useSharedState() {
     ButtonDisabled: false,
     totalOC: 0,
     OCusada: 0,
-
-
   });
 
   const updateState = (key, value) => {
-    setState(prevState => ({
+    setState((prevState) => ({
       ...prevState,
       [key]: value,
     }));
@@ -46,4 +44,3 @@ export function useSharedState() {
 
   return { state, updateState };
 }
-

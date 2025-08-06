@@ -25,7 +25,7 @@ export default function Test() {
   };
 
   return (
-    <main className="flex flex-col gap-y-4 h-screen w-screen items-center justify-center bg-base-content">
+    <main className="flex h-screen w-screen flex-col items-center justify-center gap-y-4 bg-base-content">
       <button className="btn btn-primary" onClick={click}>
         Click me please
       </button>

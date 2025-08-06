@@ -1,6 +1,21 @@
-import React, { useState } from 'react';
-import { Button, Input, FormControl, FormLabel, FormErrorMessage, VStack, useToast, Modal, ModalOverlay, ModalContent, ModalHeader, ModalCloseButton, ModalBody, ModalFooter } from '@chakra-ui/react';
-import { selectProfiles } from '@/app/_lib/database/profiles';
+import React, { useState } from "react";
+import {
+  Button,
+  Input,
+  FormControl,
+  FormLabel,
+  FormErrorMessage,
+  VStack,
+  useToast,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalCloseButton,
+  ModalBody,
+  ModalFooter,
+} from "@chakra-ui/react";
+import { selectProfiles } from "@/app/_lib/database/profiles";
 
 interface ResetPasswordModalProps {
   onClose: () => void; // Prop para cerrar el modal
@@ -21,13 +36,13 @@ const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({ onClose }) => {
     try {
       // Limpiamos los espacios de ambos valores
       const cleanedEmail = eemail.trim();
-  
+
       // Suponiendo que `selectProfiles` devuelve un array de perfiles
       const correo = await selectProfiles({ limit: 10, page: 1, equals: {} });
-  
+
       // Busca el objeto con el email proporcionado
       const encontrado = correo.find((perfil) => perfil.email === cleanedEmail);
-  
+
       // Verifica si el correo fue encontrado
       if (encontrado) {
         return true;
@@ -39,9 +54,7 @@ const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({ onClose }) => {
       return false;
     }
   };
-  
 
-  
   const handleSubmit = async () => {
     let valid = true;
     // Validación del correo
@@ -126,7 +139,9 @@ const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({ onClose }) => {
                 onChange={(e) => setPassword(e.target.value)}
                 focusBorderColor="blue.500"
               />
-              {passwordError && <FormErrorMessage>{passwordError}</FormErrorMessage>}
+              {passwordError && (
+                <FormErrorMessage>{passwordError}</FormErrorMessage>
+              )}
             </FormControl>
 
             {/* Campo para confirmar la nueva contraseña */}
@@ -139,14 +154,24 @@ const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({ onClose }) => {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 focusBorderColor="blue.500"
               />
-              {confirmPasswordError && <FormErrorMessage>{confirmPasswordError}</FormErrorMessage>}
+              {confirmPasswordError && (
+                <FormErrorMessage>{confirmPasswordError}</FormErrorMessage>
+              )}
             </FormControl>
           </VStack>
         </ModalBody>
 
         <ModalFooter>
-          <Button bgColor="red" textColor="white" onClick={onClose}>Cancelar</Button>
-          <Button bgColor="#F1D803" textColor="black" onClick={handleSubmit} ml={3}>Restablecer</Button>
+          <Button bgColor="red" textColor="white" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button
+            bgColor="#F1D803"
+            textColor="black"
+            onClick={handleSubmit}
+            ml={3}>
+            Restablecer
+          </Button>
         </ModalFooter>
       </ModalContent>
     </Modal>
@@ -154,5 +179,3 @@ const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({ onClose }) => {
 };
 
 export default ResetPasswordModal;
-
-

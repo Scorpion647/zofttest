@@ -1,18 +1,14 @@
 CREATE SCHEMA if NOT EXISTS access AUTHORIZATION postgres;
 
-
 REVOKE ALL ON schema access
 FROM
   authenticated,
   anon,
   public;
 
-
 CREATE TYPE access.user_roles AS ENUM('administrator', 'employee', 'guest');
 
-
 CREATE TABLE IF NOT EXISTS access.table_names (name VARCHAR(40) PRIMARY KEY);
-
 
 CREATE TABLE IF NOT EXISTS access.table_permissions (
   table_name VARCHAR(40) NOT NULL,
@@ -21,7 +17,6 @@ CREATE TABLE IF NOT EXISTS access.table_permissions (
   PRIMARY KEY (table_name, user_role),
   FOREIGN key (table_name) REFERENCES access.table_names (name)
 );
-
 
 -- SELECT 0001
 -- INSERT 0010

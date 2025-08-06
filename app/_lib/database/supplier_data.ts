@@ -122,18 +122,17 @@ export async function updateSupplierData(
 }
 
 export async function deleteSupplierData(
-  supplier_data_id: Arrayable<Tables<"supplier_data">["supplier_data_id"]>  
+  supplier_data_id: Arrayable<Tables<"supplier_data">["supplier_data_id"]>,
 ) {
   const { error } = await supabase
     .from("supplier_data")
     .delete()
     .in(
       "supplier_data_id",
-      Array.isArray(supplier_data_id) ? supplier_data_id : [supplier_data_id]
+      Array.isArray(supplier_data_id) ? supplier_data_id : [supplier_data_id],
     );
 
   if (error) {
     throw error;
   }
 }
-

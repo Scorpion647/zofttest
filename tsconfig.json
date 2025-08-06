@@ -1,10 +1,6 @@
 {
   "compilerOptions": {
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext"
-    ],
+    "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -22,25 +18,12 @@
       }
     ],
     "paths": {
-      "@/*": [
-        "./*"
-      ],
-      "@lib/*": [
-        "./app/_lib/*"
-      ],
-      "@email-templates/*": [
-        "./app/_ui/email-templates/*"
-      ]
+      "@/*": ["./*"],
+      "@lib/*": ["./app/_lib/*"],
+      "@email-templates/*": ["./app/_ui/email-templates/*"]
     },
     "target": "ES2017"
   },
-  "include": [
-    "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    ".next/types/**/*.ts"
-  ],
-  "exclude": [
-    "node_modules"
-  ]
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
 }

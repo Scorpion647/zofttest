@@ -162,14 +162,14 @@ export async function getlastmodified(
 }
 
 export async function checkSubheadingExists(
-  subheading: number, 
+  subheading: number,
 ): Promise<boolean> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("materials")
     .select("subheading")
-    .eq("subheading", String(subheading)) 
-    .limit(1); 
+    .eq("subheading", String(subheading))
+    .limit(1);
 
   if (error) {
     console.error("Error buscando subheading:", error.message);
@@ -178,7 +178,6 @@ export async function checkSubheadingExists(
 
   return data.length > 0;
 }
-
 
 export async function SearchRecord(
   base_bill_id: number,
@@ -196,7 +195,6 @@ export async function SearchRecord(
 
   return data;
 }
-
 
 export async function getMaterials(
   page: number = 1,
@@ -289,7 +287,7 @@ export async function getRecord(
     .select("*")
     .eq("purchase_order", purchase_order)
     .eq("item", item)
-    .limit(1)  // Asegura que solo se devuelva un registro, incluso si hay más de uno
+    .limit(1) // Asegura que solo se devuelva un registro, incluso si hay más de uno
     .single(); // Esto seguirá funcionando como antes para asegurar que solo se devuelve uno
 
   if (error) {
@@ -299,12 +297,11 @@ export async function getRecord(
 
   if (!data) {
     // Si no hay datos, manejar el caso de manera explícita
-    return null; 
+    return null;
   }
 
   return data;
 }
-
 
 export async function getRecordInvoice(
   base_bill_id: string,
@@ -378,22 +375,21 @@ export async function insertRecord(
 
 export async function updateRecord(
   purchase_order: string,
-  item: string, 
-  new_data: TablesUpdate<"base_bills">
+  item: string,
+  new_data: TablesUpdate<"base_bills">,
 ): Promise<CustomDataError | void> {
   const supabase = createClient();
   const { error } = await supabase
     .from("base_bills")
     .update(new_data)
     .eq("purchase_order", purchase_order)
-    .eq("item", Number(item)) 
+    .eq("item", Number(item))
     .single();
 
   if (error) {
     return handleError(error);
   }
 }
-
 
 export async function deleteRecord(
   id: Tables<"base_bills">["base_bill_id"],
@@ -589,20 +585,19 @@ export async function insertSupplier(
 }
 
 export async function updateSupplier(
-  id: Tables<"suppliers">["supplier_id"], 
+  id: Tables<"suppliers">["supplier_id"],
   new_data: TablesUpdate<"suppliers">,
 ): Promise<CustomDataError | void> {
   const supabase = createClient();
   const { error } = await supabase
     .from("suppliers")
     .update(new_data)
-    .eq("supplier_id", id); 
+    .eq("supplier_id", id);
 
   if (error) {
     return handleError(error);
   }
 }
-
 
 export async function deleteSupplier(
   args: Tables<"suppliers">["supplier_id"],

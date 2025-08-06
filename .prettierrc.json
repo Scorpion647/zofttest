@@ -16,7 +16,7 @@
         "dataTypeCase": "upper",
         "functionCase": "upper",
         "identifierCase": "lower",
-        "linesBetweenQueries": 2
+        "linesBetweenQueries": 1
       }
     }
   ]

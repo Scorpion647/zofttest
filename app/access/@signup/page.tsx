@@ -21,8 +21,8 @@ export default function SignupPage() {
 
   return (
     <ChakraProvider>
-      <div className="w-full flex items-center justify-center lg:w-1/2 bg-gradient-to-tr from-green-900 to-green-700 ">
-        <Box className="bg-gradient-to-tr border-2 border-black from-gray-200 to-gray-300 px-10 py-8 rounded-3xl">
+      <div className="flex w-full items-center justify-center bg-gradient-to-tr from-green-900 to-green-700 lg:w-1/2">
+        <Box className="rounded-3xl border-2 border-black bg-gradient-to-tr from-gray-200 to-gray-300 px-10 py-8">
           <VStack>
             <Image
               src={"/grupo-ecopetrol.png"}

@@ -16,9 +16,7 @@ CREATE FUNCTION public.update_bill_quantities (base_bill_id UUID) returns void A
         where base.base_bill_id = $1;
     end $$ language plpgsql security definer;
 
-
-CREATE
-OR REPLACE function public.handle_invoice_state_change () returns trigger AS $$
+CREATE OR REPLACE FUNCTION public.handle_invoice_state_change () returns trigger AS $$
     declare
         _bill_record record;
 begin
@@ -32,15 +30,12 @@ begin
 end;
 $$ language plpgsql security definer;
 
-
 CREATE TRIGGER handle_invoice_state_change
 AFTER
 UPDATE ON public.invoice_data FOR each ROW
 EXECUTE procedure public.handle_invoice_state_change ();
 
-
-CREATE
-OR REPLACE function public.update_invoice_state_after_supplier_data_delete () returns trigger AS $$
+CREATE OR REPLACE FUNCTION public.update_invoice_state_after_supplier_data_delete () returns trigger AS $$
     declare
         invoice invoice_data%rowtype;
 begin
@@ -65,14 +60,11 @@ begin
 end;
 $$ language plpgsql security definer;
 
-
 CREATE TRIGGER update_base_bill_quantity_after_supplier_data_delete
 AFTER delete ON public.supplier_data FOR each ROW
 EXECUTE procedure public.update_invoice_state_after_supplier_data_delete ();
 
-
-CREATE
-OR REPLACE function public.update_quantities_after_supplier_data_updates () returns trigger AS $$
+CREATE OR REPLACE FUNCTION public.update_quantities_after_supplier_data_updates () returns trigger AS $$
 begin
     if (old.billed_quantity <> new.billed_quantity) then
         perform public.update_bill_quantities(old.base_bill_id);
@@ -82,22 +74,18 @@ begin
 end
 $$ language plpgsql security definer;
 
-
 CREATE TRIGGER update_quantities_after_supplier_data_updates
 AFTER
 UPDATE ON public.supplier_data FOR each ROW
 EXECUTE procedure public.update_quantities_after_supplier_data_updates ();
 
-
-CREATE
-OR REPLACE function public.update_quantities_after_supplier_data_insert () returns trigger AS $$
+CREATE OR REPLACE FUNCTION public.update_quantities_after_supplier_data_insert () returns trigger AS $$
 begin
     perform public.update_bill_quantities(new.base_bill_id);
 
     return new;
 end
 $$ language plpgsql security definer;
-
 
 CREATE TRIGGER update_quantities_after_supplier_data_insert
 AFTER insert ON public.supplier_data FOR each ROW

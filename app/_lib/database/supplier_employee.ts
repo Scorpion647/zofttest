@@ -115,18 +115,21 @@ export async function updateSupplierEmployee(
 }
 
 export async function deleteSupplierEmployee(
-  supplier_employee_id: Arrayable<Tables<"supplier_employees">["supplier_employee_id"]>
+  supplier_employee_id: Arrayable<
+    Tables<"supplier_employees">["supplier_employee_id"]
+  >,
 ) {
   const { error } = await supabase
     .from("supplier_employees")
     .delete()
     .in(
       "supplier_employee_id",
-      Array.isArray(supplier_employee_id) ? supplier_employee_id : [supplier_employee_id]
+      Array.isArray(supplier_employee_id) ? supplier_employee_id : (
+        [supplier_employee_id]
+      ),
     );
 
   if (error) {
     throw error;
   }
 }
-

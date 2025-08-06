@@ -1,6 +1,5 @@
 ALTER TABLE public.supplier_data enable ROW level security;
 
-
 CREATE POLICY "can select supplier data" ON public.supplier_data FOR
 SELECT
   USING (
@@ -14,7 +13,6 @@ SELECT
         base_bills.base_bill_id = supplier_data.base_bill_id
     )
   );
-
 
 CREATE POLICY "can insert supplier data" ON public.supplier_data FOR insert
 WITH
@@ -30,7 +28,6 @@ WITH
     )
   );
 
-
 CREATE POLICY "can update supplier data" ON public.supplier_data
 FOR UPDATE
   USING (
@@ -45,7 +42,6 @@ FOR UPDATE
     )
   );
 
-
 CREATE POLICY "can delete supplier data" ON public.supplier_data FOR delete USING (
   public.role_has_permission ('supplier_data', B'1000')
   OR EXISTS (
@@ -58,9 +54,7 @@ CREATE POLICY "can delete supplier data" ON public.supplier_data FOR delete USIN
   )
 );
 
-
-CREATE
-OR REPLACE function public.validate_supplier_data () returns trigger AS $$
+CREATE OR REPLACE FUNCTION public.validate_supplier_data () returns trigger AS $$
 declare
     _base_bill public.base_bills%rowtype;
     _invoice public.invoice_data%rowtype;
@@ -87,10 +81,8 @@ begin
 end
 $$ language plpgsql security invoker;
 
-
 CREATE TRIGGER "before insert supplier data" before insert ON public.supplier_data FOR each ROW
 EXECUTE procedure public.validate_supplier_data ();
-
 
 CREATE TRIGGER "before update supplier data" before
 UPDATE ON public.supplier_data FOR each ROW

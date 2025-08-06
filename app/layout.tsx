@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   title: "Zoft",
   description: "El gestor de facturación que necesitas.",
   icons: {
-    icon: "/favicon.ico",  
+    icon: "/favicon.ico",
   },
 };
 
@@ -23,4 +23,3 @@ export default function RootLayout({
     </html>
   );
 }
-

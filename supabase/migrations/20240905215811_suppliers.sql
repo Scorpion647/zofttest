@@ -8,11 +8,9 @@ CREATE TABLE public.suppliers (
   UNIQUE (domain)
 );
 
-
 CREATE FUNCTION supplier_search (public.suppliers) returns TEXT AS $$
   select $1.name|| ' ' || $1.domain || ' '
 $$ language sql immutable;
-
 
 -- permissions
 INSERT INTO
@@ -20,38 +18,32 @@ INSERT INTO
 VALUES
   ('suppliers');
 
-
 INSERT INTO
   access.table_permissions (table_name, user_role, permissions)
 VALUES
   ('suppliers', 'administrator', B'1111');
 
-
 -- SUPPLIER EMPLOYEE TABLE
 CREATE TABLE public.supplier_employees (
   supplier_employee_id serial PRIMARY KEY,
-  profile_id UUID REFERENCES public.profiles (profile_id) ON DELETE cascade ON UPDATE cascade NOT NULL,
-  supplier_id int4 REFERENCES public.suppliers (supplier_id) ON DELETE cascade ON UPDATE cascade NOT NULL,
+  profile_id UUID REFERENCES public.profiles (profile_id) ON DELETE CASCADE ON UPDATE CASCADE NOT NULL,
+  supplier_id int4 REFERENCES public.suppliers (supplier_id) ON DELETE CASCADE ON UPDATE CASCADE NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
   UNIQUE (profile_id, supplier_id)
 );
-
 
 INSERT INTO
   access.table_names (name)
 VALUES
   ('supplier_employees');
 
-
 INSERT INTO
   access.table_permissions (table_name, user_role, permissions)
 VALUES
   ('supplier_employees', 'administrator', B'1111');
 
-
 -- rls for supplier employees
 ALTER TABLE public.supplier_employees enable ROW level security;
-
 
 CREATE FUNCTION is_employee (
   _supplier_id INTEGER,
@@ -61,7 +53,6 @@ begin
         return (select true from public.supplier_employees se where se.supplier_id=_supplier_id and se.profile_id = _profile_id) or false;
 end;
 $$ language plpgsql security invoker;
-
 
 CREATE POLICY "Select for supplier employees" ON public.supplier_employees FOR
 SELECT
@@ -76,13 +67,11 @@ SELECT
     )
   );
 
-
 CREATE POLICY "Insert for supplier employees" ON public.supplier_employees FOR insert TO authenticated
 WITH
   CHECK (
     public.role_has_permission ('supplier_employees', B'0010')
   );
-
 
 CREATE POLICY "Update for supplier employees" ON public.supplier_employees
 FOR UPDATE
@@ -90,33 +79,26 @@ FOR UPDATE
     public.role_has_permission ('supplier_employees', B'0100')
   );
 
-
 CREATE POLICY "Delete for supplier employees" ON public.supplier_employees FOR delete TO authenticated USING (
   public.role_has_permission ('supplier_employees', B'1000')
 );
 
-
 -- rls for suppliers
 ALTER TABLE public.suppliers enable ROW level security;
-
 
 CREATE POLICY "Select for suppliers" ON public.suppliers FOR
 SELECT
   TO authenticated USING (public.role_has_permission ('suppliers', B'0001'));
 
-
 CREATE POLICY "Insert for suppliers" ON public.suppliers FOR insert TO authenticated
 WITH
   CHECK (public.role_has_permission ('suppliers', B'0010'));
-
 
 CREATE POLICY "Update for suppliers" ON public.suppliers
 FOR UPDATE
   TO authenticated USING (public.role_has_permission ('suppliers', B'0100'));
 
-
 CREATE POLICY "Delete for suppliers" ON public.suppliers FOR delete TO authenticated USING (public.role_has_permission ('suppliers', B'1000'));
-
 
 CREATE POLICY "Employees can select" ON public.suppliers FOR
 SELECT
@@ -131,7 +113,6 @@ SELECT
         AND supplier_employees.profile_id = auth.uid ()
     )
   );
-
 
 -- trigger when supplier employee is inserted
 CREATE FUNCTION public.after_supplier_employee_insert () returns trigger AS $$
@@ -148,11 +129,9 @@ begin
 end;
 $$ language plpgsql security definer;
 
-
 CREATE TRIGGER after_supplier_employee_insert
 AFTER insert ON public.supplier_employees FOR each ROW
 EXECUTE procedure public.after_supplier_employee_insert ();
-
 
 -- trigger when supplier employee is removed
 CREATE FUNCTION public.after_supplier_employee_delete () returns trigger AS $$
@@ -171,11 +150,9 @@ begin
 end;
 $$ language plpgsql security definer;
 
-
 CREATE TRIGGER after_supplier_employee_delete
 AFTER delete ON public.supplier_employees FOR each ROW
 EXECUTE procedure public.after_supplier_employee_delete ();
-
 
 CREATE FUNCTION public.after_supplier_employee_update () returns trigger AS $$
 declare
@@ -202,7 +179,6 @@ begin
     return new;
 end;
 $$ language plpgsql security definer;
-
 
 CREATE TRIGGER after_supplier_employee_update
 AFTER

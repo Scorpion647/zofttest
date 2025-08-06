@@ -1,5 +1,4 @@
-CREATE
-OR REPLACE function get_invoice_email (invoice_id UUID) returns TABLE (
+CREATE OR REPLACE FUNCTION get_invoice_email (invoice_id UUID) returns TABLE (
   email VARCHAR(255),
   invoice_id UUID,
   invoice_updated_at TIMESTAMP WITH TIME ZONE,

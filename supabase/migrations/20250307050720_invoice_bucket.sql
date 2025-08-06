@@ -3,7 +3,6 @@ INSERT INTO
 VALUES
   ('invoices', 'invoices', '{ "application/pdf" }');
 
-
 CREATE POLICY "Invoice documents access" ON storage.objects FOR
 SELECT
   TO authenticated USING (
@@ -29,7 +28,6 @@ SELECT
       )
     )
   );
-
 
 CREATE POLICY "Invoice documents upload" ON storage.objects FOR insert TO authenticated
 WITH
@@ -57,7 +55,6 @@ WITH
     )
   );
 
-
 CREATE POLICY "Invoice documents update" ON storage.objects
 FOR UPDATE
   TO authenticated USING (
@@ -83,7 +80,6 @@ FOR UPDATE
       )
     )
   );
-
 
 CREATE POLICY "Invoice documents remove" ON storage.objects FOR delete TO authenticated USING (
   bucket_id = 'invoices'

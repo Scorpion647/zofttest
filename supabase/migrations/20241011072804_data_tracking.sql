@@ -22,9 +22,7 @@ CREATE TABLE public.data_tracking (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-
-CREATE
-OR REPLACE function track_bill (
+CREATE OR REPLACE FUNCTION track_bill (
   bill_id UUID,
   clean_bill BOOLEAN DEFAULT FALSE,
   clean_data BOOLEAN DEFAULT FALSE

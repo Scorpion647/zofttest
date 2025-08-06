@@ -38,7 +38,7 @@ export async function selectSuppliers(
     }
   } else if (params.search && params.search.trim().length > 0) {
     const term = `%${params.search.trim()}%`;
-  query = query.ilike('name', term);             
+    query = query.ilike("name", term);
   }
 
   if (params.orderBy) {

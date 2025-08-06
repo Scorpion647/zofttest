@@ -1,7 +1,7 @@
 import type { Config } from "tailwindcss";
-import daisyui from "daisyui"
-import tailwindAnimate from "tailwindcss-animate"
-import themes from "daisyui/src/theming/themes"
+import daisyui from "daisyui";
+import tailwindAnimate from "tailwindcss-animate";
+import themes from "daisyui/src/theming/themes";
 
 const config: Config = {
   content: [
@@ -21,13 +21,15 @@ const config: Config = {
   plugins: [daisyui, tailwindAnimate],
 
   daisyui: {
-    themes: [{
-      light: {
-        ...themes.light,
-        'primary': "#09856C",
-        'primary-content': "#FFFFFF"
-      }
-    }],
-  }
+    themes: [
+      {
+        light: {
+          ...themes.light,
+          primary: "#09856C",
+          "primary-content": "#FFFFFF",
+        },
+      },
+    ],
+  },
 };
 export default config;

@@ -18,7 +18,7 @@ export async function insertBills(
     .select();
 
   if (error) {
-    console.error("Error inserting bills:", error);  // Log de error más detallado
+    console.error("Error inserting bills:", error); // Log de error más detallado
     throw new Error("No se pudo insertar la factura");
   }
 
@@ -55,7 +55,6 @@ export async function deleteBills(
 
   if (error) throw error;
 }
-
 
 export async function selectSingleBill(
   id: Tables<"base_bills">["base_bill_id"],

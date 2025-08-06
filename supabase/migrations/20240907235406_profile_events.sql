@@ -10,7 +10,6 @@ begin
 end;
 $$ language plpgsql security definer;
 
-
 -- trigger when profile is inserted, if it has a domain, check if supplier exists and insert supplier employee
 CREATE FUNCTION public.check_profile_domain () returns trigger AS $$
 declare
@@ -35,15 +34,12 @@ begin
 end;
 $$ language plpgsql security definer;
 
-
 CREATE TRIGGER check_profile_domain
 AFTER insert ON public.profiles FOR each ROW
 EXECUTE procedure public.check_profile_domain ();
 
-
 --trigger when profile is updated, check the role of the current user to validate the new role
-CREATE
-OR REPLACE function public.profile_role_before_update () returns trigger AS $$
+CREATE OR REPLACE FUNCTION public.profile_role_before_update () returns trigger AS $$
 begin
     if (current_user = 'postgres') then
         return new;
@@ -60,7 +56,6 @@ begin
     return new;
 end
 $$ language plpgsql security invoker;
-
 
 CREATE TRIGGER profile_role_on_update
 AFTER

@@ -15,16 +15,16 @@ export default async function SpecialLayout({
   let isLoading = true;
 
   async function handleRole() {
-    const supabase = await createClient()
-    const { data } = await supabase.rpc('get_user_role')
+    const supabase = await createClient();
+    const { data } = await supabase.rpc("get_user_role");
 
-    console.info('data: ', data)
-    return data ?? 'guest';
+    console.info("data: ", data);
+    return data ?? "guest";
   }
 
   isLoading = false;
   return (
-    <main className="flex flex-col items-center justify-center h-screen">
+    <main className="flex h-screen flex-col items-center justify-center">
       <Suspense fallback={<PageLoader />}>
         {handleRole().then((role) => {
           userRole = role;
@@ -34,11 +34,11 @@ export default async function SpecialLayout({
             <>
               {isLoading ?
                 <PageLoader />
-                : userRole === "administrator" ?
-                  admin
-                  : userRole === "employee" ?
-                    user
-                    : guest}
+              : userRole === "administrator" ?
+                admin
+              : userRole === "employee" ?
+                user
+              : guest}
             </>
           );
         })}

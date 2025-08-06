@@ -96,7 +96,11 @@ export async function insertInvoice(
 
   const { invoice_id, supplier_id } = invoiceData[0];
 
-  const insertDocResponse = await insertInvoiceDoc(supplier_id, invoice_id, files);
+  const insertDocResponse = await insertInvoiceDoc(
+    supplier_id,
+    invoice_id,
+    files,
+  );
 
   return { invoiceData, insertDocResponse };
 }
@@ -119,8 +123,8 @@ export async function insertInvoiceDoc(
       .from("invoice_docs")
       .insert({
         invoice_id,
-      }).select()
-      
+      })
+      .select();
 
     if (tableError) {
       storageErrors.push(Error(tableError.message));
@@ -205,7 +209,6 @@ export async function deleteInvoiceDocs(
     throw error;
   }
 }
-
 
 export async function updateInvoice(
   invoice: Arrayable<SetRequired<TablesUpdate<"invoice_data">, "invoice_id">>,
