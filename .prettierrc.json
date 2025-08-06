@@ -1,5 +1,10 @@
 {
-  "plugins": ["prettier-plugin-sql"],
+  "plugins": [
+    "prettier-plugin-pkg",
+    "prettier-plugin-sh",
+    "prettier-plugin-sql",
+    "prettier-plugin-tailwindcss"
+  ],
   "experimentalTernaries": true,
   "bracketSameLine": true,
   "overrides": [
