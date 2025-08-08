@@ -5,12 +5,10 @@ import { createClient } from "@lib/supabase/client";
 import { Arrayable, SetRequired, Writable } from "type-fest";
 import { MultiSelectQuery } from "../database.utils";
 
-const supabase = createClient();
-
 export async function selectSingleSupplier(
   supplier_id: Tables<"suppliers">["supplier_id"],
 ) {
-  const { data, error } = await supabase
+  const { data, error } = await createClient()
     .from("suppliers")
     .select("*")
     .eq("supplier_id", supplier_id)
@@ -24,7 +22,7 @@ export async function selectSingleSupplier(
 export async function selectSuppliers(
   params: MultiSelectQuery<Tables<"suppliers">>,
 ) {
-  let query = supabase.from("suppliers").select();
+  let query = createClient().from("suppliers").select();
 
   if (params.equals && !params.search) {
     const keys = Object.keys(params.equals) as Array<
@@ -71,11 +69,10 @@ export async function insertSupplier(
 ) {
   const supplierList = supplier instanceof Array ? supplier : [supplier];
 
-  const { data, error } = await supabase
+  const { data, error } = await createClient()
     .from("suppliers")
     .insert(supplierList)
-    .select()
-    .returns<Tables<"suppliers">[]>();
+    .select();
 
   if (error) {
     throw error;
@@ -87,6 +84,7 @@ export async function updateSupplier(
   supplier: Arrayable<SetRequired<TablesUpdate<"suppliers">, "supplier_id">>,
 ) {
   const supplierList = supplier instanceof Array ? supplier : [supplier];
+  const supabase = createClient();
 
   for (const it of supplierList) {
     const { error } = await supabase
@@ -102,7 +100,7 @@ export async function updateSupplier(
 export async function deleteSupplier(
   supplier_id: Arrayable<Tables<"suppliers">["supplier_id"]>,
 ) {
-  const { error } = await supabase
+  const { error } = await createClient()
     .from("suppliers")
     .delete()
     .in(

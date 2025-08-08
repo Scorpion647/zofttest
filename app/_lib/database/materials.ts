@@ -6,12 +6,10 @@ import { Arrayable, SetRequired, Writable } from "type-fest";
 import { MultiSelectQuery } from "../database.utils";
 import { Prettify } from "../utils/types";
 
-const supabase = createClient();
-
 export async function selectSingleMaterial(
   material_code: Tables<"materials">["material_code"],
 ) {
-  const { data, error } = await supabase
+  const { data, error } = await createClient()
     .from("materials")
     .select("*")
     .eq("material_code", material_code)
@@ -23,7 +21,7 @@ export async function selectSingleMaterial(
 }
 
 export async function selectBySubheading(subheading: string) {
-  const { data, error } = await supabase
+  const { data, error } = await createClient()
     .from("materials")
     .select("*")
     .eq("subheading", subheading);
@@ -38,7 +36,7 @@ export async function selectBySubheading(subheading: string) {
 export async function selectMaterials(
   params: MultiSelectQuery<Tables<"materials">>,
 ) {
-  let query = supabase.from("materials").select("*");
+  let query = createClient().from("materials").select("*");
 
   if (params.equals) {
     const keys = Object.keys(params.equals) as Array<
@@ -87,11 +85,10 @@ export async function insertMaterial(
 ) {
   const materialList = material instanceof Array ? material : [material];
 
-  const { data, error } = await supabase
+  const { data, error } = await createClient()
     .from("materials")
     .insert(materialList)
-    .select()
-    .returns<Tables<"materials">[]>();
+    .select();
 
   if (error) {
     throw error;
@@ -105,6 +102,7 @@ export async function updateMaterial(
     target: Prettify<Tables<"materials">["material_code"]>;
   }>,
 ) {
+  const supabase = createClient();
   const materialList = data instanceof Array ? data : [data];
 
   for (const it of materialList) {
@@ -121,6 +119,7 @@ export async function updateMaterial(
 export async function deleteMaterial(
   material_code: Arrayable<Tables<"materials">["material_code"]>,
 ) {
+  const supabase = createClient();
   const materialList =
     material_code instanceof Array ? material_code : [material_code];
 
@@ -139,6 +138,7 @@ export async function deleteMaterial(
 export async function selectMaterialsByCodes(
   materialCodes: string[],
 ): Promise<Tables<"materials">[]> {
+  const supabase = createClient();
   const uniqueCodes = Array.from(new Set(materialCodes));
 
   const results: Tables<"materials">[] = [];

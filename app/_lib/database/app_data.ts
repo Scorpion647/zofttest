@@ -4,10 +4,8 @@ import { Tables, TablesInsert } from "@lib/database.types";
 import { createClient } from "@lib/supabase/client";
 import { Arrayable, Writable } from "type-fest";
 
-const supabase = createClient();
-
 export async function getData(key?: Tables<"appdata">["key"]) {
-  let query = supabase.from("appdata").select();
+  let query = createClient().from("appdata").select();
 
   if (key) {
     query = query.eq("key", key);
@@ -25,7 +23,7 @@ export async function saveAppData(
 ) {
   const dataList = appData instanceof Array ? appData : [appData];
 
-  const { data, error } = await supabase
+  const { data, error } = await createClient()
     .from("appdata")
     .upsert(dataList)
     .select();
@@ -36,7 +34,10 @@ export async function saveAppData(
 }
 
 export async function removeAppData(key: Tables<"appdata">["key"]) {
-  const { error } = await supabase.from("appdata").delete().eq("key", key);
+  const { error } = await createClient()
+    .from("appdata")
+    .delete()
+    .eq("key", key);
 
   if (error) throw error;
 }

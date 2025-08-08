@@ -6,12 +6,10 @@ import { Arrayable, SetRequired, Writable } from "type-fest";
 import { MultiSelectQuery } from "../database.utils";
 import { Prettify } from "@lib/utils/types";
 
-const supabase = createClient();
-
 export async function selectSingleInvoice(
   invoice_id: Tables<"invoice_data">["invoice_id"],
 ) {
-  const { data, error } = await supabase
+  const { data, error } = await createClient()
     .from("invoice_data")
     .select("*, invoice_docs(*)")
     .eq("invoice_id", invoice_id)
@@ -25,7 +23,7 @@ export async function selectSingleInvoice(
 export async function selectInvoiceBySupplier(
   supplierID: Tables<"suppliers">["supplier_id"],
 ) {
-  const { data, error } = await supabase
+  const { data, error } = await createClient()
     .from("invoice_data")
     .select("*, invoice_docs(*)")
     .eq("supplier_id", supplierID);
@@ -38,7 +36,7 @@ export async function selectInvoiceBySupplier(
 export async function selectInvoice_data(
   params: Prettify<Omit<MultiSelectQuery<Tables<"invoice_data">>, "search">>,
 ) {
-  let query = supabase.from("invoice_data").select("*, invoice_docs(*)");
+  let query = createClient().from("invoice_data").select("*, invoice_docs(*)");
 
   if (params.equals) {
     const keys = Object.keys(params.equals) as Array<
@@ -81,7 +79,7 @@ export async function insertInvoice(
   invoice: TablesInsert<"invoice_data">,
   files?: FileList,
 ) {
-  const { data: invoiceData, error } = await supabase
+  const { data: invoiceData, error } = await createClient()
     .from("invoice_data")
     .insert(invoice)
     .select();
@@ -111,6 +109,7 @@ export async function insertInvoiceDoc(
   files: FileList,
   upsert: boolean = false,
 ) {
+  const supabase = createClient();
   const storageErrors: Error[] = [];
 
   Array.from(files).map(async (file) => {
@@ -152,8 +151,8 @@ export async function getDocDownloadLink(
 
   console.log("Generando URL para:", `${invoicePath}/${doc_id}`);
 
-  const { data, error } = await supabase.storage
-    .from("invoices")
+  const { data, error } = await createClient()
+    .storage.from("invoices")
     .createSignedUrl(`${invoicePath}/${doc_id}`, 180);
 
   if (error) {
@@ -174,6 +173,7 @@ export async function deleteInvoiceDocs(
   document: Tables<"invoice_docs">,
   supplier_id: Tables<"suppliers">["supplier_id"],
 ) {
+  const supabase = createClient();
   const { doc_id, invoice_id } = document;
   const invoicePath = `${supplier_id}/${invoice_id}`;
 
@@ -213,6 +213,7 @@ export async function deleteInvoiceDocs(
 export async function updateInvoice(
   invoice: Arrayable<SetRequired<TablesUpdate<"invoice_data">, "invoice_id">>,
 ) {
+  const supabase = createClient();
   const invoiceList = invoice instanceof Array ? invoice : [invoice];
 
   for (const it of invoiceList) {
@@ -229,7 +230,7 @@ export async function updateInvoice(
 export async function deleteInvoice(
   invoice_id: Arrayable<Tables<"invoice_data">["invoice_id"]>,
 ) {
-  const { error } = await supabase
+  const { error } = await createClient()
     .from("invoice_data")
     .delete()
     .in("invoice_id", Array.isArray(invoice_id) ? invoice_id : [invoice_id]);

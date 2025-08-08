@@ -5,11 +5,10 @@ import { Arrayable, SetRequired, Writable } from "type-fest";
 import { Tables, TablesInsert, TablesUpdate } from "../database.types";
 import { MultiSelectQuery } from "../database.utils";
 
-const supabase = createClient();
-
 export async function insertBills(
   bill: Writable<Arrayable<Omit<TablesInsert<"base_bills">, "base_bill_id">>>,
 ) {
+  const supabase = createClient();
   const billList = bill instanceof Array ? bill : [bill];
 
   const { data, error } = await supabase
@@ -30,6 +29,7 @@ export async function updateBills(
     Arrayable<SetRequired<TablesUpdate<"base_bills">, "base_bill_id">>
   >,
 ) {
+  const supabase = createClient();
   const billList = bills instanceof Array ? bills : [bills];
 
   const errors: PostgrestError[] = [];
@@ -48,6 +48,7 @@ export async function updateBills(
 export async function deleteBills(
   billID: Arrayable<Tables<"base_bills">["base_bill_id"]>,
 ) {
+  const supabase = createClient();
   const { error } = await supabase
     .from("base_bills")
     .delete()
@@ -59,6 +60,7 @@ export async function deleteBills(
 export async function selectSingleBill(
   id: Tables<"base_bills">["base_bill_id"],
 ) {
+  const supabase = createClient();
   const { data, error } = await supabase
     .from("base_bills")
     .select()
@@ -73,6 +75,7 @@ export async function selectByPurchaseOrder(
   po: Tables<"base_bills">["purchase_order"],
   item: Tables<"base_bills">["item"],
 ) {
+  const supabase = createClient();
   const { data, error } = await supabase
     .from("base_bills")
     .select()
@@ -85,7 +88,7 @@ export async function selectByPurchaseOrder(
 export async function selectBills(
   params: MultiSelectQuery<Tables<"base_bills">>,
 ) {
-  let query = supabase.from("base_bills").select();
+  let query = createClient().from("base_bills").select();
 
   if (params.equals) {
     const keys = Object.keys(params.equals) as Array<

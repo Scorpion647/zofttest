@@ -6,11 +6,10 @@ import { Prettify } from "../utils/types";
 import { MultiSelectQuery } from "../database.utils";
 import { Arrayable } from "type-fest";
 
-const supabase = createClient();
 type Track = Prettify<Database["public"]["Functions"]["track_bill"]>;
 
 export default async function track_bill(args: Track["Args"]) {
-  const { data, error } = await supabase.rpc("track_bill", args);
+  const { data, error } = await createClient.rpc("track_bill", args);
 
   if (error) {
     throw error;
@@ -20,7 +19,7 @@ export default async function track_bill(args: Track["Args"]) {
 }
 
 export async function selectSingleTrack(id: Tables<"data_tracking">["id"]) {
-  const { data, error } = await supabase
+  const { data, error } = await createClient()
     .from("data_tracking")
     .select("*")
     .eq("id", id)
@@ -34,7 +33,7 @@ export async function selectSingleTrack(id: Tables<"data_tracking">["id"]) {
 export async function selectTracks(
   params: MultiSelectQuery<Tables<"data_tracking">>,
 ) {
-  let query = supabase.from("data_tracking").select("*");
+  let query = createClient().from("data_tracking").select("*");
 
   if (params.equals) {
     const keys = Object.keys(params.equals) as Array<
@@ -81,7 +80,10 @@ export async function selectTracks(
 export async function deleteTrack(
   id: Arrayable<Tables<"data_tracking">["id"]>,
 ) {
-  const { error } = await supabase.from("materials").delete().eq("id", id);
+  const { error } = await createClient()
+    .from("materials")
+    .delete()
+    .eq("id", id);
 
   if (error) {
     throw error;

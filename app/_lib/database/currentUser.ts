@@ -1,7 +1,5 @@
 import { createClient } from "@lib/supabase/client";
 
-const supabase = createClient();
-
 export async function userData() {
-  return await supabase.auth.getUser();
+  return await createClient().auth.getUser();
 }

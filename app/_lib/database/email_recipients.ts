@@ -4,12 +4,10 @@ import { createClient } from "@lib/supabase/client";
 import type { Tables, TablesInsert } from "@lib/database.types";
 import { Arrayable, SetRequired } from "type-fest";
 
-const supabase = createClient();
-
 export async function selectEmails(
   id?: Arrayable<Tables<"email_recipients">["id"]>,
 ) {
-  let query = supabase.from("email_recipients").select();
+  let query = createClient().from("email_recipients").select();
 
   if (Array.isArray(id)) {
     const filters = id.map((val) => `id.eq.${val}`).join(",");
@@ -33,7 +31,9 @@ export async function insertEmails(
       [emails]
     )) as TablesInsert<"email_recipients">[];
 
-  const { error } = await supabase.from("email_recipients").insert(emailList);
+  const { error } = await createClient()
+    .from("email_recipients")
+    .insert(emailList);
 
   if (error) throw error;
 }
@@ -46,7 +46,9 @@ export async function upsertEmails(
     "id"
   >[];
 
-  const { error } = await supabase.from("email_recipients").upsert(emailList);
+  const { error } = await createClient()
+    .from("email_recipients")
+    .upsert(emailList);
 
   if (error) throw error;
 }
@@ -54,12 +56,13 @@ export async function upsertEmails(
 export async function deleteEmails(
   emails: Arrayable<Tables<"email_recipients">["id"]>,
 ) {
+  const supabase = createClient();
   let emailList = (
     Array.isArray(emails) ? emails : (
       [emails]
     )) as Tables<"email_recipients">["id"][];
 
-  const { error } = await supabase
+  const { error } = await createClient()
     .from("email_recipients")
     .delete()
     .in("id", emailList);

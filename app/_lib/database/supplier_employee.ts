@@ -6,12 +6,10 @@ import { Arrayable, SetRequired, Writable } from "type-fest";
 import { MultiSelectQuery } from "../database.utils";
 import { Prettify } from "@lib/utils/types";
 
-const supabase = createClient();
-
 export async function selectSingleSupplierEmployee(
   supplier_employee_id: Tables<"supplier_employees">["supplier_employee_id"],
 ) {
-  const { data, error } = await supabase
+  const { data, error } = await createClient()
     .from("supplier_employees")
     .select("*")
     .eq("supplier_employee_id", supplier_employee_id)
@@ -25,7 +23,7 @@ export async function selectSingleSupplierEmployee(
 export async function selecSupplierEmployeeByProfileId(
   profile_id: Tables<"profiles">["profile_id"],
 ) {
-  const { data, error } = await supabase
+  const { data, error } = await createClient()
     .from("supplier_employees")
     .select()
     .eq("profile_id", profile_id);
@@ -40,7 +38,7 @@ export async function selectsupplier_employees(
     Omit<MultiSelectQuery<Tables<"supplier_employees">>, "search">
   >,
 ) {
-  let query = supabase.from("supplier_employees").select("*");
+  let query = createClient().from("supplier_employees").select("*");
 
   if (params.equals) {
     const keys = Object.keys(params.equals) as Array<
@@ -84,11 +82,10 @@ export async function insertSupplierEmployee(
 ) {
   const invoiceList = invoice instanceof Array ? invoice : [invoice];
 
-  const { data, error } = await supabase
+  const { data, error } = await createClient()
     .from("supplier_employees")
     .insert(invoiceList)
-    .select()
-    .returns<Tables<"supplier_employees">[]>();
+    .select();
 
   if (error) {
     throw error;
@@ -102,6 +99,7 @@ export async function updateSupplierEmployee(
   >,
 ) {
   const invoiceList = invoice instanceof Array ? invoice : [invoice];
+  const supabase = createClient();
 
   for (const it of invoiceList) {
     const { error } = await supabase
@@ -119,7 +117,7 @@ export async function deleteSupplierEmployee(
     Tables<"supplier_employees">["supplier_employee_id"]
   >,
 ) {
-  const { error } = await supabase
+  const { error } = await createClient()
     .from("supplier_employees")
     .delete()
     .in(

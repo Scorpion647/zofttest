@@ -6,12 +6,10 @@ import { Tables, TablesUpdate } from "../database.types";
 import { handleError } from "../definitions";
 import { MultiSelectQuery } from "../database.utils";
 
-const supabase = createClient();
-
 export async function selectProfiles(
   params: MultiSelectQuery<Tables<"profiles">>,
 ) {
-  let query = supabase.from("profiles").select("*");
+  let query = createClient().from("profiles").select("*");
 
   if (params.equals) {
     const keys = Object.keys(params.equals) as Array<
@@ -57,7 +55,7 @@ export async function selectProfiles(
 }
 
 export async function getProfile(profile_id: Tables<"profiles">["profile_id"]) {
-  const { data, error } = await supabase
+  const { data, error } = await createClient()
     .from("profiles")
     .select()
     .eq("profile_id", profile_id)
@@ -71,6 +69,7 @@ export async function getProfile(profile_id: Tables<"profiles">["profile_id"]) {
 export async function updateProfile(
   profile: Arrayable<SetRequired<TablesUpdate<"profiles">, "profile_id">>,
 ) {
+  const supabase = createClient();
   const profileList = profile instanceof Array ? profile : [profile];
 
   for (const it of profileList) {
@@ -102,7 +101,7 @@ export async function deleteAccount() {
 export async function removeUser(user_id: string) {
   const supabase = createClient();
 
-  const { data: userData, error: userError } = await supabase.auth.getUser();
+  const { error: userError } = await supabase.auth.getUser();
 
   if (userError) throw userError;
 
