@@ -1,4 +1,5 @@
 import * as React from "react";
+import Image from "next/image";
 
 export interface EmailTemplateProps {
   invoice_id: string;
@@ -80,7 +81,7 @@ export const EmailTemplate: React.FC<Readonly<EmailTemplateProps>> = (
         }}>
         {/* Columna izquierda: Imagen de Ecopetrol */}
         <div style={{ flex: 1, textAlign: "center", paddingRight: "20px" }}>
-          <img
+          <Image
             src="https://zofttest.vercel.app/grupo-ecopetrol.png"
             alt="Reficar"
             width="300"
@@ -100,7 +101,7 @@ export const EmailTemplate: React.FC<Readonly<EmailTemplateProps>> = (
         {/* Columna derecha: Bloque con logo ZOFT y textos */}
         <div style={{ flex: 1, textAlign: "left", paddingLeft: "20px" }}>
           <div style={{ display: "flex", alignItems: "center" }}>
-            <img
+            <Image
               src="https://zofttest.vercel.app/zoft.png"
               alt="Zoft"
               width="64"
