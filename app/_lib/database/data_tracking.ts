@@ -9,7 +9,7 @@ import { Arrayable } from "type-fest";
 type Track = Prettify<Database["public"]["Functions"]["track_bill"]>;
 
 export default async function track_bill(args: Track["Args"]) {
-  const { data, error } = await createClient.rpc("track_bill", args);
+  const { data, error } = await createClient().rpc("track_bill", args);
 
   if (error) {
     throw error;
