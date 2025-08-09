@@ -7,6 +7,7 @@
     "useIgnoreFile": false,
   },
   "files": {
+    "include": ["supabase/**/*.sql"],
     "ignore": [],
   },
   "linter": {
@@ -15,6 +16,9 @@
       "recommended": true,
     },
   },
+  "migrations": {
+    "migrationsDir": "supabase/migrations",
+  },
   "db": {
     "host": "127.0.0.1",
     "port": 54322,
@@ -22,6 +26,5 @@
     "password": "postgres",
     "database": "postgres",
     "connTimeoutSecs": 10,
-    "disableConnection": false,
   },
 }
