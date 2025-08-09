@@ -3,7 +3,8 @@
     "prettier-plugin-pkg",
     "prettier-plugin-sh",
     "prettier-plugin-sql",
-    "prettier-plugin-tailwindcss"
+    "prettier-plugin-tailwindcss",
+    "prettier-plugin-toml"
   ],
   "experimentalTernaries": true,
   "bracketSameLine": true,
