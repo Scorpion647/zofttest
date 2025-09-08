@@ -33,6 +33,7 @@ export function useSharedState() {
     ButtonDisabled: false,
     totalOC: 0,
     OCusada: 0,
+    unidad: "",
   });
 
   const updateState = (key, value) => {

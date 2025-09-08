@@ -8,6 +8,8 @@ import {
   Text,
   Icon,
   Button,
+  Input,
+  useToast,
 } from "@chakra-ui/react";
 import { IoEllipsisVerticalSharp } from "react-icons/io5";
 import {
@@ -15,7 +17,9 @@ import {
   getProfile,
   getSupplier,
 } from "@/app/_lib/database/service";
-import { ArrowBackIcon, ArrowForwardIcon } from "@chakra-ui/icons";
+import { ArrowBackIcon, ArrowForwardIcon, CloseIcon, EditIcon } from "@chakra-ui/icons";
+import { FaSave } from "react-icons/fa";
+import { updateSupplier } from "../_lib/database/suppliers";
 
 export const Gettempleados = ({ supplier, regresar }) => {
   const [employees, setEmployees] = useState([]);
@@ -23,7 +27,11 @@ export const Gettempleados = ({ supplier, regresar }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [hasNextPage, setHasNextPage] = useState(false);
+  const [nameSupplier, setnameSupplier] = useState("")
+  const [inputname, setinputname] = useState("")
   const itemsPerPage = 8;
+  const [Edit, setEdit] = useState(false);
+  const toast = useToast();
 
   function removeDuplicates(array, key) {
     const seen = new Set();
@@ -41,7 +49,10 @@ export const Gettempleados = ({ supplier, regresar }) => {
   const fetchEmployees = async (page) => {
     setIsLoading(true);
     try {
-      const sup = await getSupplier("", "", supplier);
+      const sup = await getSupplier(supplier, "", "");
+      setnameSupplier(sup.name)
+      setinputname(sup.name)
+      if (Edit) setEdit(false)
       const data = await getEmployees(sup.supplier_id, page, itemsPerPage);
       console.log("Esta es la Data de empleados: ", data);
       if (data && data.length > 0) {
@@ -71,11 +82,12 @@ export const Gettempleados = ({ supplier, regresar }) => {
 
   useEffect(() => {
     fetchEmployees(currentPage);
-  }, [supplier, currentPage]);
+  }, [supplier, nameSupplier, currentPage]);
 
   const handleNextPage = async () => {
     const nextPage = currentPage + 1;
-    const sup = await getSupplier("", "", supplier);
+    const sup = await getSupplier(supplier, "", "");
+    if (nameSupplier !== sup.name) { setnameSupplier(sup.name); setinputname(sup.name) }
     const data = await getEmployees(sup.supplier_id, nextPage, itemsPerPage);
 
     if (data && data.length > 0) {
@@ -90,6 +102,33 @@ export const Gettempleados = ({ supplier, regresar }) => {
       setCurrentPage((prevPage) => prevPage - 1);
     }
   };
+
+  const handleSave = async () => {
+    const confirmSave = window.confirm("¿Seguro quieres guardar los cambios? \n El nuevo nombre sera: " + inputname);
+    if (confirmSave) {
+      await updateSupplier({ supplier_id: supplier, name: inputname })
+      toast({
+        title: "Nombre cambiado con exito",
+        description: `El nombre del proveedor ha sido cambiado`,
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+      });
+      setnameSupplier(inputname); 
+    }
+  };
+
+  const copytext = (action,text) => {
+    navigator.clipboard.writeText(text)
+    toast({
+      title: (action+" copiado con exito"),
+        description: ("El "+action+` del empleado ha sido copiado en el portapapeles`),
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+    })
+  }
+
 
   return (
     <div>
@@ -113,7 +152,19 @@ export const Gettempleados = ({ supplier, regresar }) => {
           <Text className="font-semibold" fontSize="90%">
             Proveedor:{" "}
           </Text>
-          <Text fontSize="90%">{supplier}</Text>
+          {Edit ?
+            <Input h="90%" w="80" value={inputname} onChange={(e) => setinputname(e.target.value)} />
+            :
+            <Text fontSize="90%">{nameSupplier}</Text>
+          }
+          <Button h="90%" w="5" bgColor="#F1D803" onClick={() => Edit ? handleSave() : setEdit(true)}>
+            {Edit ? <FaSave /> : <EditIcon />}
+          </Button>
+          {Edit && (
+            <Button h="90%" w="5" bgColor="red" onClick={() => { setEdit(false); setinputname(nameSupplier); }}>
+              <CloseIcon color="white" />
+            </Button>
+          )}
         </HStack>
 
         <VStack
@@ -182,9 +233,13 @@ export const Gettempleados = ({ supplier, regresar }) => {
                       alignItems="center"
                       justify="start"
                       width="30%">
-                      <Text>{emp.name}</Text>
+                      <Text onClick={() => copytext("nombre",emp.name)}
+                        _hover={{ cursor: "pointer", textDecoration: "underline"}}
+                        >{emp.name}</Text>
                     </HStack>
-                    <Text width="60%">{emp.email}</Text>
+                    <Text width="60%" onClick={() => copytext("email",emp.email)}
+                      _hover={{ cursor: "pointer", textDecoration: "underline"}}
+                      >{emp.email}</Text>
                     <VStack width="10%">
                       <Icon
                         as={IoEllipsisVerticalSharp}

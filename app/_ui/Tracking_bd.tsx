@@ -1026,15 +1026,4 @@ worksheet.columns = [
   );
 };
 
-//colWidths={[50, 150, 50, 110, 110 , 100,]}
 
-/*<div >
-            <h2>hola</h2>
-            <HotTable
-            data={tableData}
-            width="100%"
-                  height="450"
-                  licenseKey="non-commercial-and-evaluation"
-                  columns={columns}
-            />
-        </div>*/

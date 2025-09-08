@@ -72,7 +72,12 @@ import { EditIcon } from "@chakra-ui/icons";
 import { Associate_invoice } from "../Associate_invoice";
 import { useSharedState } from "../useSharedState";
 import { GrDocumentPdf } from "react-icons/gr";
-import debounce from "lodash/debounce";
+
+
+
+
+
+
 
 function formatMoney(amount) {
   return amount.toLocaleString("en-US", {
@@ -87,8 +92,8 @@ const Material = async (code, number) => {
   const material = await getMaterial(code);
   return (
     number === 0 ? material.subheading
-    : number === 1 ? material.measurement_unit
-    : material.type
+      : number === 1 ? material.measurement_unit
+        : material.type
   );
 };
 
@@ -108,6 +113,7 @@ const Typematerial = (type) => {
 };
 
 const ReturnTable = ({ suppliers, volver }) => {
+
   const hotTableRef = useRef(null);
   const [tableData, setTableData] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -119,6 +125,9 @@ const ReturnTable = ({ suppliers, volver }) => {
   const [origin, setorigin] = useState("");
   const [numbeer, setnumbeer] = useState(0);
   const { state, updateState } = useSharedState();
+  const dataRef = useRef([[]]); // no undefined
+
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -159,16 +168,14 @@ const ReturnTable = ({ suppliers, volver }) => {
 
     const handleSave = async () => {
       if (selectedStatus === "foreign" && !tipo) {
-        const insert = await insertMaterial({
+        await insertMaterial({
           material_code: `${cellInfo.code}-N`,
           subheading: cellInfo.subp,
           measurement_unit: unit,
           type: "national",
         });
       }
-      console.log(cellInfo.code);
-      console.log(selectedStatus);
-      console.log(unit);
+
       const update = {
         data: {
           type: selectedStatus,
@@ -176,11 +183,19 @@ const ReturnTable = ({ suppliers, volver }) => {
         },
         target: cellInfo.code,
       };
-      console.log(update);
-      const hola = await updateMaterial(update);
+
+      await updateMaterial(update);
+
+      // 🔹 Mandamos la info nueva al padre
+      onSave({
+        code: cellInfo.code,
+        newType: selectedStatus,
+        newUnit: unit,
+      });
 
       onClose();
     };
+
 
     return (
       <Modal isOpen={isOpen} onClose={onClose} motionPreset="none">
@@ -389,7 +404,28 @@ const ReturnTable = ({ suppliers, volver }) => {
     }
   };
 
-  const handleSave = (updatedInfo) => {};
+  const handleSave = ({ code, newType, newUnit }) => {
+    setData((prevData) =>
+      prevData.map((row) => {
+        // Si el código de la fila coincide, actualizamos
+        if (row[2] === code) {
+          const updatedRow = [...row];
+
+          // Columna 15 = TIPO
+          updatedRow[15] = Typematerial(newType);
+
+          // Columna 10 = UC
+          if (newUnit) {
+            updatedRow[10] = newUnit;
+          }
+
+          return updatedRow;
+        }
+        return row;
+      })
+    );
+  };
+
 
   const sendEmail = async (invoice, header, razon, fmm) => {
     const data = {
@@ -479,8 +515,8 @@ const ReturnTable = ({ suppliers, volver }) => {
               parseFloat(
                 (supdata.gross_weight / supdata.billed_quantity).toFixed(8),
               )
-            : ["U", "L"].includes(unidad) ? 1
-            : 0;
+              : ["U", "L"].includes(unidad) ? 1
+                : 0;
           if (type === "foreign") {
             const materialNational = await getMaterial(
               `${material.material_code}-N`,
@@ -535,7 +571,7 @@ const ReturnTable = ({ suppliers, volver }) => {
             supdata.billed_currency !== "EUR" ?
               totalInLocalCurrency /
               (supdata.billed_currency === "USD" ? 1 : trm)
-            : totalInLocalCurrency / trm;
+              : totalInLocalCurrency / trm;
 
           // Formatea los resultados
           const data1 = formatMoney(totalInUSD); // Precio total en USD
@@ -551,17 +587,17 @@ const ReturnTable = ({ suppliers, volver }) => {
             record.measurement_unit, // UND
             sup.name, // PROVEEDOR
             supdata.billed_currency === "USD" ? supdata.billed_unit_price / 100
-            : supdata.billed_currency === "EUR" ?
-              parseFloat(
+              : supdata.billed_currency === "EUR" ?
                 parseFloat(
-                  supdata.billed_unit_price / 100 / supdata.trm,
-                ).toFixed(8),
-              )
-            : parseFloat(
-                parseFloat(
-                  supdata.billed_unit_price / 100 / supdata.trm,
-                ).toFixed(8),
-              ), // FOB_UNIT
+                  parseFloat(
+                    supdata.billed_unit_price / 100 / supdata.trm,
+                  ).toFixed(8),
+                )
+                : parseFloat(
+                  parseFloat(
+                    supdata.billed_unit_price / 100 / supdata.trm,
+                  ).toFixed(8),
+                ), // FOB_UNIT
             supdata.bill_number, // FACTURA
             subheading, // PA
             unidad, // UC
@@ -583,6 +619,7 @@ const ReturnTable = ({ suppliers, volver }) => {
         return a[1] - b[1]; // Asumiendo que record.item es el segundo elemento (índice 1)
       });
       setData(data);
+      console.log(data)
       setnumbeer(numbeer + 1);
     } catch {
     } finally {
@@ -593,8 +630,8 @@ const ReturnTable = ({ suppliers, volver }) => {
           sendEmail(
             suppliers,
             status === "approved" ? "Aprobado"
-            : status === "pending" ? "Pendiente"
-            : "Rechazado",
+              : status === "pending" ? "Pendiente"
+                : "Rechazado",
             status === "rejected" ? textValue : undefined,
             status === "approved" ? FMM : undefined,
           );
@@ -631,38 +668,32 @@ const ReturnTable = ({ suppliers, volver }) => {
   };
 
   const validateTable = () => {
-    console.log("Estamos en validacion");
     if (!hotTableRef.current) return;
-    console.log("pasamos 1");
     const hot = hotTableRef.current.hotInstance;
     if (!hot || hot.isDestroyed) return;
-    console.log("pasamos 2");
-    const rows = hot.getData(); // Obtén todas las filas de la tabla
-    const emptyColumnIndexes = [9, 10]; // Columnas que deseas comprobar si están vacías (ejemplo: columna 0 y 2)
-    const wordColumnIndex = 15; // Columna específica para verificar una palabra (ejemplo: columna 3)
+    const rows = hot.getData(); 
+    const emptyColumnIndexes = [9, 10]; 
+    const wordColumnIndex = 15; 
 
-    // Recorremos las filas
+
     for (let row = 0; row < rows.length; row++) {
-      // Recorremos las columnas que queremos verificar si están vacías
       for (let col of emptyColumnIndexes) {
         if (!rows[row][col]) {
-          // Si la celda está vacía, devuelve false
+          console.log("Esta vacia")
           return false;
         }
       }
 
-      // Verificar si en la columna específica aparece la palabra
       if (
         rows[row][wordColumnIndex] === "INVALIDO" ||
         rows[row][wordColumnIndex] === "EXTRANJERO" ||
         rows[row][wordColumnIndex] === "OTRO"
       ) {
-        // Si la palabra específica aparece, devuelve false
+        console.log("estamos comprobando todo y esta bien")
         return false;
       }
     }
 
-    // Si ninguna condición se cumple, devuelve true
     return true;
   };
 
@@ -837,26 +868,24 @@ const ReturnTable = ({ suppliers, volver }) => {
     isOpen: isOpen5,
     onOpen: onOpen5,
     onClose: onClose5,
-  } = useDisclosure(); // Hook para abrir/cerrar el modal
-  const [textValue, setTextValue] = useState(""); // Estado para el textarea
+  } = useDisclosure(); 
+  const [textValue, setTextValue] = useState(""); 
 
   const handleAccept = () => {
-    console.log("Texto ingresado:", textValue); // Acción cuando se presiona "Aceptar"
-    onClose5(); // Cierra el modal
+    console.log("Texto ingresado:", textValue); 
+    onClose5(); 
   };
 
   useEffect(() => {
     const confirm = async () => {
       const invoice = await selectSingleInvoice(suppliers);
-      setcontv(contv + 1); // Aumentar el contador solo si es necesario
+      setcontv(contv + 1); 
 
-      // Si el estado es "rejected" y no tiene feedback, abrir el modal.
-      // Evitar cambiar el texto innecesariamente con setTextValue("") cuando el modal ya tiene valor.
       if (status === "rejected" && !invoice.feedback && contv > 0 && !isOpen5) {
-        setTextValue(""); // Limpiar solo cuando es necesario
-        onOpen5(); // Abrir el modal
+        setTextValue(""); 
+        onOpen5(); 
       } else {
-        setTextValue(invoice.feedback || ""); // Mantener el texto si hay un feedback
+        setTextValue(invoice.feedback || ""); 
       }
     };
     confirm();
@@ -871,14 +900,13 @@ const ReturnTable = ({ suppliers, volver }) => {
   const handleTextChange = (e) => {
     const value = e.target.value;
 
-    // Si el usuario sigue escribiendo, reseteamos el timeout
+
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
     }
 
-    // Esperamos 1 segundo después del último cambio antes de guardar
+
     typingTimeoutRef.current = setTimeout(() => {
-      //saveText(value)
       setTextValue(value);
     }, 500);
   };
@@ -967,7 +995,7 @@ const ReturnTable = ({ suppliers, volver }) => {
                       label={
                         existfile !== "Si" ?
                           "Factura no disponible"
-                        : "Descargar factura"
+                          : "Descargar factura"
                       }>
                       <Button
                         isDisabled={existfile !== "Si"}
@@ -1076,7 +1104,7 @@ const ReturnTable = ({ suppliers, volver }) => {
                   <ModalBody>
                     {isLoading1 ?
                       "Generando archivo..."
-                    : "Archivo generado exitosamente."}
+                      : "Archivo generado exitosamente."}
                     {error && <p className="text-red-500">{error}</p>}
                   </ModalBody>
                   <ModalFooter>
@@ -1092,21 +1120,18 @@ const ReturnTable = ({ suppliers, volver }) => {
                 cellInfo={cellInfo}
                 onSave={handleSave}
               />
-              <VStack
-                alignItems="center"
-                align="center"
-                justify="center"
-                className="bg-gray-300">
+
+              <div className="bg-gray-300 items-center justify-center align-middle ">
                 <HotTable
                   data={Data}
                   columns={[
-                    { data: 0, width: 100, readOnly: true, title: "OC" },
+                    { data: 0, readOnly: true, title: "OC" },
                     { data: 1, readOnly: true, title: "ITEMS" },
                     { data: 2, readOnly: true, title: "CODIGO" },
                     { data: 3, readOnly: true, title: "DESCRIPCION" },
                     { data: 4, readOnly: true, title: "CANT" },
                     { data: 5, readOnly: true, title: "UND" },
-                    { data: 6, width: 150, readOnly: true, title: "PROVEEDOR" },
+                    { data: 6, readOnly: true, title: "PROVEEDOR" },
                     { data: 7, readOnly: true, title: "FOB UNIT" },
                     { data: 8, readOnly: true, title: "FACTURA" },
                     { data: 9, readOnly: true, title: "PA" },
@@ -1130,8 +1155,6 @@ const ReturnTable = ({ suppliers, volver }) => {
                   ref={hotTableRef}
                   rowHeaders={true}
                   stretchH="all"
-                  //mergeCells={mergeCellsConfig}
-
                   //beforeChange={handleAfterChange}
                   fixedColumnsStart={3}
                   afterOnCellMouseDown={handleCellClick}
@@ -1248,7 +1271,7 @@ const ReturnTable = ({ suppliers, volver }) => {
                     return cellProperties;
                   }}
                 />
-              </VStack>
+              </div>
             </>
           )}
         </>

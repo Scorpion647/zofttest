@@ -15,6 +15,7 @@ import {
   Input,
   Icon,
   useMediaQuery,
+  Tooltip,
 } from "@chakra-ui/react";
 import {
   SearchIcon,
@@ -23,9 +24,11 @@ import {
   ArrowBackIcon,
   ArrowForwardIcon,
 } from "@chakra-ui/icons";
+import { FaUsersGear } from "react-icons/fa6";
 
 import { Gettempleados } from "@/app/_ui/Gettempleados";
 import { selectSuppliers } from "../_lib/database/suppliers";
+import { GrRefresh } from "react-icons/gr";
 
 export const CreatelargeDomain = () => {
   const [suppliers, setSuppliers] = useState([]);
@@ -97,8 +100,8 @@ export const CreatelargeDomain = () => {
       }
     };
 
-    fetchSuppliers();
-  }, [search, currentPage]);
+    if(hola) fetchSuppliers();
+  }, [search, currentPage, hola]);
 
   const handleSupplierClick = (supplier) => {
     setSelectedSupplier(supplier);
@@ -159,12 +162,22 @@ export const CreatelargeDomain = () => {
                 }}
                 placeholder="Proveedor"
               />
-              <Button
+              <Tooltip label="Buscar">
+                <Button
                 colorScheme="teal"
                 onClick={() => setSearch(isInput)}
                 backgroundColor="#F1D803">
                 <SearchIcon w={5} h={5} color="black" />
               </Button>
+              </Tooltip>
+              <Tooltip label="Refrescar">
+                <Button
+                colorScheme="teal"
+                onClick={() => setSearch("")}
+                backgroundColor="#F1D803">
+                <GrRefresh color="black"/>
+              </Button>
+              </Tooltip>
             </HStack>
           </Flex>
           <VStack
@@ -200,49 +213,58 @@ export const CreatelargeDomain = () => {
               </HStack>
             </VStack>
             <VStack
-              overflow="auto"
               height={suppliers.length === 0 ? "100%" : ""}
-              width="100%">
+              width="100%" bgColor="gray.200">
               {suppliers.length > 0 ?
                 suppliers.map((supplier) => (
                   <Box
-                    key={supplier.id}
+                    key={supplier.supplier_id}
                     whiteSpace="nowrap"
-                    paddingRight={2}
                     paddingLeft={2}
                     justifyContent="center"
                     alignItems="center"
-                    className="rounded-2xl"
-                    onClick={() => handleSupplierClick(supplier.name)}
-                    bg="gray.200"
-                    w="100%"
+                    className="rounded-xl"
+                    mx={10}
+                    bg="white"
+                    w="98%"
                     h="100%">
-                    <HStack
-                      className="rounded-2xl"
-                      bgColor="white"
-                      align="center"
-                      justify="center"
-                      w="100%"
-                      h="30px">
+                    <HStack h="100%">
                       <HStack
-                        ml="3%"
-                        alignItems="center"
-                        justify="start"
-                        width="30%">
-                        <Text fontSize={iSmallScreen ? "60%" : "100%"}>
-                          {supplier.domain}
+                        className="rounded-xl"
+                        bgColor="white"
+                        align="center"
+                        justify="center"
+                        w="90%"
+                        h="30px">
+                        <HStack
+                          ml="3%"
+                          alignItems="center"
+                          justify="start"
+                          width="35%">
+                          <Text fontSize={iSmallScreen ? "60%" : "100%"}>
+                            {supplier.domain}
+                          </Text>
+                        </HStack>
+                        <Text
+                          fontSize={iSmallScreen ? "60%" : "100%"}
+                          width="65%">
+                          {supplier.name}
                         </Text>
                       </HStack>
-                      <Text
-                        fontSize={iSmallScreen ? "60%" : "100%"}
-                        width="60%">
-                        {supplier.name}
-                      </Text>
-                      <VStack width="10%"></VStack>
+                      <HStack h="100%" w="10%" >
+                        <HStack w="20%"></HStack>
+                        <Tooltip label="Administrar">
+                          <HStack onClick={() => handleSupplierClick(supplier.supplier_id)} h="100%" w="80%"
+                          className=" rounded-r-xl justify-center align-middle items-center cursor-pointer"
+                          bgColor="#F1D803">
+                          <FaUsersGear />
+                        </HStack>
+                        </Tooltip>
+                      </HStack>
                     </HStack>
                   </Box>
                 ))
-              : <HStack
+                : <HStack
                   align="center"
                   justify="center"
                   h="100%"
@@ -282,68 +304,4 @@ export const CreatelargeDomain = () => {
   );
 };
 
-export const CreateSmallDomain = () => {
-  return (
-    <>
-      <Flex
-        w="100%"
-        className="mb-3 mt-3"
-        justify="space-between"
-        align="center">
-        <HStack>
-          <Input
-            fontSize="60%"
-            width="68%"
-            border="1px"
-            backgroundColor="white"
-            placeholder="Dominio"
-          />
-          <Button width={6} colorScheme="teal" backgroundColor="#F1D803">
-            <SearchIcon w={5} h={5} color="black"></SearchIcon>
-          </Button>
-        </HStack>
-        <Button
-          width={6}
-          onClick={() => setAddDomain(true)}
-          colorScheme="teal"
-          backgroundColor="#F1D803">
-          <AddIcon w={5} h={5} color="black"></AddIcon>
-        </Button>
-      </Flex>
-      <VStack
-        overflow="auto"
-        w="100%"
-        bgColor="gray.200"
-        height="400"
-        justify="flex-start"
-        alignItems="flex-start">
-        <Box
-          whiteSpace="nowrap"
-          justifyContent="center"
-          alignItems="center"
-          className="rounded-2xl"
-          bg="gray.200"
-          w="100%"
-          h="50">
-          <HStack
-            marginTop="1%"
-            className="rounded-2xl"
-            bgColor="white"
-            align="center"
-            justify="center"
-            w="100%"
-            h="100%">
-            <HStack ml="5%" alignItems="center" justify="start" w="80%">
-              <Text fontSize="50%">unicartagena.edu.co</Text>
-            </HStack>
-            <HStack spacing={2} alignItems="center" justify="center" w="20%">
-              <Box w={6} bg="red">
-                <CloseIcon w={2} h={2} color="white" />
-              </Box>
-            </HStack>
-          </HStack>
-        </Box>
-      </VStack>
-    </>
-  );
-};
+
