@@ -49,33 +49,26 @@ export default function Userpage() {
   const [email, setemail] = useState("");
 
   function transformName(name: string) {
-    // 1. Limpiar espacios y normalizar
+
     const cleaned = name
-      .trim() // Eliminar espacios al inicio y final
-      .replace(/\s+/g, " ") // Colapsar múltiples espacios a uno solo
-      .replace(/^\s+|\s+$/g, ""); // Eliminar espacios sobrantes nuevamente
+      .trim() 
+      .replace(/\s+/g, " ") 
+      .replace(/^\s+|\s+$/g, ""); 
 
     if (!cleaned) return "";
 
-    // 2. Dividir en palabras
-    const words = cleaned.split(" ");
 
-    // 3. Aplicar reglas según cantidad de palabras
+    const words = cleaned.split(" ");
     if (words.length === 1) {
-      // Caso 1: Una sola palabra
       return words[0].substring(0, 10);
     } else {
-      // Caso 2: Dos o más palabras (tomamos solo las primeras dos)
       const [first, second] = words.slice(0, 2);
       const combinedLength = first.length + second.length;
-
-      // 3a. Si la suma de caracteres <= 10
       if (combinedLength <= 10) {
-        // Verificar si la primera palabra excede 8 caracteres
+
         const adjustedFirst = first.length > 8 ? first.substring(0, 8) : first;
-        return `${adjustedFirst} ${second}`.substring(0, 10 + 1); // +1 por el espacio
+        return `${adjustedFirst} ${second}`.substring(0, 10 + 1); 
       }
-      // 3b. Si la suma excede 10 caracteres
       else {
         const truncatedFirst = first.substring(0, 8);
         const processedSecond = second[0] ? `${second[0]}.` : "";
@@ -84,21 +77,16 @@ export default function Userpage() {
     }
   }
 
-  /*console.log(transformName("jhoy castro"))
-console.log(transformName("jhoy castro casanova"))
-console.log(transformName("jhoy casanova"))
-console.log(transformName("jhoyluis castro"))
-console.log(transformName("jhoylasq castro"))*/
+
 
   const handleLogout = async () => {
     try {
       const response = await fetch("/logout", {
         method: "GET",
-        cache: "no-store", // para evitar respuestas en caché
+        cache: "no-store", 
       });
 
       if (response.ok) {
-        // Forzar la actualización del estado en el cliente
         router.refresh();
       } else {
         console.error("Failed to log out");
@@ -147,23 +135,16 @@ console.log(transformName("jhoylasq castro"))*/
       }
       setemail(String(user?.data?.user?.email));
 
-      //console.log(user.data.user?.identities[0].identity_data.username)
-      //console.log(user.data.user?.identities[0].identity_data)
-      //lg:w-96 lg:h-30
     };
     Data();
   }, []);
 
   const deleteAccount = async () => {
-    // Mostrar confirmación con el diálogo nativo del navegador
     const confirmacion = window.confirm(
       "¿Estás seguro que deseas eliminar tu cuenta? Esta acción es irreversible.",
     );
-
-    // Si el usuario cancela, detenemos el proceso
     if (!confirmacion) return;
 
-    // Si confirma, ejecutamos la eliminación
     try {
       const deleteac = await removeUser(iduser);
       console.log(deleteac);
@@ -174,10 +155,10 @@ console.log(transformName("jhoylasq castro"))*/
       alert("Ocurrió un error al eliminar la cuenta");
     }
   };
+
+  
   const supplierData = async () => {
     setSqueleton(true);
-    //const total = selectBills({limit: 300,page: 1, equals: {supplier_id: idsup}})
-    //const approved = selectInvoice_data({ limit: 300, page: 1, equals: {supplier_id: idsup, state: "approved"}})
     const pending = selectInvoice_data({
       limit: 300,
       page: 1,
@@ -209,7 +190,7 @@ console.log(transformName("jhoylasq castro"))*/
         while (isMounted) {
           if (idsup > -1) {
             await supplierData();
-            break; // Sale del bucle si tiene éxito
+            break; 
           } else {
             await new Promise((resolve) => setTimeout(resolve, 3000));
           }
@@ -219,10 +200,10 @@ console.log(transformName("jhoylasq castro"))*/
       startPolling();
 
       return () => {
-        isMounted = false; // Evita actualizaciones si el componente se desmonta
+        isMounted = false; 
       };
     }
-  }, [isinicio, idsup]); // Vuelve a ejecutar cuando cambien estas variables
+  }, [isinicio, idsup]); 
 
   return (
     <ChakraProvider>
