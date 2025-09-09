@@ -47,13 +47,11 @@ export default function AccessForm(props: AccessFormProps) {
   const [resetEmail, setResetEmail] = useState<string>("");
   const [newPassword, setNewPassword] = useState<string>("");
   const [confirmNewPassword, setConfirmNewPassword] = useState<string>("");
+  const [tokenHash, setTokenHash] = useState<string | null>(null);
+
 
   const { isOpen, onOpen, onClose } = useDisclosure(); // Modal de correo
-  const {
-    isOpen: isPasswordModalOpen,
-    onOpen: onPasswordModalOpen,
-    onClose: onPasswordModalClose,
-  } = useDisclosure(); // Modal de cambio de contraseña
+  const { isOpen: isPasswordModalOpen, onOpen: onPasswordModalOpen, onClose: onPasswordModalClose } = useDisclosure(); // Modal de cambio de contraseña
 
   const resetErrors = () => {
     setEmailError(undefined);
@@ -64,33 +62,45 @@ export default function AccessForm(props: AccessFormProps) {
     setChangePasswordError(undefined);
   };
 
-  // === Detecta query `reset=true` para abrir modal de cambio de contraseña automáticamente ===
+  // === DEBUG: Detecta token en URL ===
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const resetFlag = params.get("reset");
+  const params = new URLSearchParams(window.location.search);
+  const token_hash = params.get("token_hash");
+  const next = params.get("next");
 
-    console.log("[DEBUG] reset flag:", resetFlag);
+  console.log("[DEBUG] URL params:", { token_hash, next });
+  toast({
+    title: "DEBUG URL params",
+    description: `token_hash: ${token_hash}, next: ${next}`,
+    status: "info",
+    duration: 5000,
+    isClosable: true,
+  });
+
+  if (token_hash) {
+    setTokenHash(token_hash)
+    onPasswordModalOpen();
     toast({
-      title: "DEBUG URL params",
-      description: `reset: ${resetFlag}`,
+      title: "DEBUG: recovery token detected",
+      description: "Abriendo modal de cambio de contraseña",
       status: "info",
       duration: 5000,
       isClosable: true,
     });
 
-    if (resetFlag === "true") {
-      onPasswordModalOpen();
+    // Guardar el token para cuando el usuario cambie la contraseña
+    setResetEmail(token_hash); // <-- o un estado nuevo tokenHash
 
-      // Limpiar query para no abrir el modal nuevamente al recargar
-      params.delete("reset");
-      const url = `${window.location.pathname}?${params.toString()}`;
-      window.history.replaceState({}, "", url);
-    }
-  }, []);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("token_hash");
+    url.searchParams.delete("next");
+    window.history.replaceState({}, "", url.toString());
+  }
+}, []);
 
-  // === Maneja envío de correo para reset ===
+
   const handleResetPassword = async () => {
-    console.log("[DEBUG] Enviando correo a:", resetEmail);
+    console.log("[DEBUG] Sending reset password email for:", resetEmail);
     toast({
       title: "DEBUG",
       description: `Enviando correo a: ${resetEmail}`,
@@ -104,7 +114,7 @@ export default function AccessForm(props: AccessFormProps) {
     });
 
     if (error) {
-      console.error("[DEBUG] resetPasswordForEmail error:", error);
+      console.error("[DEBUG] Reset password error:", error);
       toast({
         title: "Error al enviar correo",
         description: error.message,
@@ -124,43 +134,32 @@ export default function AccessForm(props: AccessFormProps) {
     }
   };
 
-  // === Maneja cambio de contraseña después de que el token PKCE haya sido consumido en el backend ===
-  const handleChangePassword = async () => {
-    console.log("[DEBUG] Cambio de contraseña:", { newPassword, confirmNewPassword });
+const handleChangePassword = async () => {
+  if (newPassword !== confirmNewPassword) {
+    toast({ title: "Error", description: "Las contraseñas no coinciden", status: "error" });
+    return;
+  }
 
-    if (newPassword !== confirmNewPassword) {
-      toast({
-        title: "Error",
-        description: "Las contraseñas no coinciden",
-        status: "error",
-        duration: 3000,
-        isClosable: true,
-      });
-      return;
-    }
+  if (!tokenHash) return;
 
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
+  console.log("tokenHash:", tokenHash, "newPassword:", newPassword);
 
-    if (error) {
-      console.error("[DEBUG] updateUser error:", error);
-      toast({
-        title: "Error al cambiar contraseña",
-        description: error.message,
-        status: "error",
-        duration: 5000,
-        isClosable: true,
-      });
-    } else {
-      toast({
-        title: "Contraseña actualizada",
-        description: "Tu contraseña ha sido cambiada exitosamente",
-        status: "success",
-        duration: 5000,
-        isClosable: true,
-      });
-      onPasswordModalClose();
-    }
-  };
+  const res = await fetch("/api/auth/reset-password", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token_hash: tokenHash, newPassword }),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    toast({ title: "Error al cambiar contraseña", description: data.error, status: "error" });
+  } else {
+    toast({ title: "Contraseña actualizada", description: data.message, status: "success" });
+    onPasswordModalClose();
+  }
+};
+
 
   const actionHandler = async (data: FormData) => {
     resetErrors();
@@ -330,6 +329,5 @@ export default function AccessForm(props: AccessFormProps) {
     </>
   );
 }
-
 
 
