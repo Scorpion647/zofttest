@@ -15,7 +15,6 @@ import {
   ModalBody,
   ModalFooter,
   Button,
-  Input,
   useToast,
 } from "@chakra-ui/react";
 import { useDisclosure } from "@chakra-ui/react";
@@ -36,33 +35,21 @@ export enum FormType {
 
 export default function AccessForm(props: AccessFormProps) {
   const { setFormType, formType } = useFormContext();
+  const toast = useToast();
 
-  const [emailError, setEmailError] = useState<string | undefined>(undefined);
-  const [passwordError, setPasswordError] = useState<string | undefined>(
-    undefined,
-  );
-  const [confirmPasswordError, setConfirmPasswordError] = useState<
-    string | undefined
-  >(undefined);
-  const [ChangePasswordError, setChangePasswordError] = useState<
-    string | undefined
-  >(undefined);
-  const [userNameError, setUserNameError] = useState<string | undefined>(
-    undefined,
-  );
-  const [error, setError] = useState<string | undefined>(undefined);
+  const [emailError, setEmailError] = useState<string | undefined>();
+  const [passwordError, setPasswordError] = useState<string | undefined>();
+  const [confirmPasswordError, setConfirmPasswordError] = useState<string | undefined>();
+  const [ChangePasswordError, setChangePasswordError] = useState<string | undefined>();
+  const [userNameError, setUserNameError] = useState<string | undefined>();
+  const [error, setError] = useState<string | undefined>();
 
-  // Estado para los modales
   const [resetEmail, setResetEmail] = useState<string>("");
   const [newPassword, setNewPassword] = useState<string>("");
   const [confirmNewPassword, setConfirmNewPassword] = useState<string>("");
+
   const { isOpen, onOpen, onClose } = useDisclosure(); // Modal de correo
-  const {
-    isOpen: isPasswordModalOpen,
-    onOpen: onPasswordModalOpen,
-    onClose: onPasswordModalClose,
-  } = useDisclosure(); // Modal de contraseña
-  const toast = useToast();
+  const { isOpen: isPasswordModalOpen, onOpen: onPasswordModalOpen, onClose: onPasswordModalClose } = useDisclosure(); // Modal de cambio de contraseña
 
   const resetErrors = () => {
     setEmailError(undefined);
@@ -73,90 +60,135 @@ export default function AccessForm(props: AccessFormProps) {
     setChangePasswordError(undefined);
   };
 
-  const handleResetPassword = async () => {
-    const { data, error } = await supabase.auth.resetPasswordForEmail(
-      resetEmail,
-      {
-        redirectTo: window.location.href,
-      },
-    );
-    if (error) {
+  // === DEBUG: Detecta token en URL ===
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("token");
+    const type = params.get("type");
+
+    console.log("[DEBUG] URL params:", { token, type });
+    toast({
+      title: "DEBUG URL params",
+      description: `token: ${token}, type: ${type}`,
+      status: "info",
+      duration: 5000,
+      isClosable: true,
+    });
+
+    if (token && type === "recovery") {
+      onPasswordModalOpen();
       toast({
-        title: "El Envio del Correo ha fallado",
-        description: `Ha fallado el intento de mandar la guia a su correo, intente mas tarde`,
+        title: "DEBUG: recovery token detected",
+        description: "Abriendo modal de cambio de contraseña",
+        status: "info",
+        duration: 5000,
+        isClosable: true,
+      });
+
+      const url = new URL(window.location.href);
+      url.searchParams.delete("token");
+      url.searchParams.delete("type");
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, []);
+
+  const handleResetPassword = async () => {
+    console.log("[DEBUG] Sending reset password email for:", resetEmail);
+    toast({
+      title: "DEBUG",
+      description: `Enviando correo a: ${resetEmail}`,
+      status: "info",
+      duration: 3000,
+      isClosable: true,
+    });
+
+    const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+      redirectTo: `${window.location.origin}/auth/confirm?next=/access`,
+    });
+
+    if (error) {
+      console.error("[DEBUG] Reset password error:", error);
+      toast({
+        title: "Error al enviar correo",
+        description: error.message,
         status: "error",
-        duration: 3000,
+        duration: 5000,
         isClosable: true,
       });
     } else {
       toast({
-        title: "Correo enviado con exito",
-        description: `Ha sido enviado a su correo la guia para recuperar su contraseña`,
+        title: "Correo enviado",
+        description: "Revisa tu bandeja de entrada para restablecer tu contraseña",
         status: "success",
-        duration: 3000,
+        duration: 5000,
         isClosable: true,
       });
-      onClose(); // Cierra el modal
+      onClose();
     }
   };
 
   const handleChangePassword = async () => {
-    if (newPassword === confirmNewPassword) {
-      const { data, error } = await supabase.auth.updateUser({
-        password: newPassword,
+    console.log("[DEBUG] Cambio de contraseña:", { newPassword, confirmNewPassword });
+
+    if (newPassword !== confirmNewPassword) {
+      toast({
+        title: "Error",
+        description: "Las contraseñas no coinciden",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
       });
-      if (error) {
-        alert("There was an error updating your password.");
-      } else {
-        alert("Password updated successfully!");
-        onPasswordModalClose(); // Cierra el modal
-      }
+      return;
+    }
+
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+
+    if (error) {
+      console.error("[DEBUG] updateUser error:", error);
+      toast({
+        title: "Error al cambiar contraseña",
+        description: error.message,
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
     } else {
-      alert("Passwords do not match!");
+      toast({
+        title: "Contraseña actualizada",
+        description: "Tu contraseña ha sido cambiada exitosamente",
+        status: "success",
+        duration: 5000,
+        isClosable: true,
+      });
+      onPasswordModalClose();
     }
   };
 
   const actionHandler = async (data: FormData) => {
     resetErrors();
-
     const result = await props.action(data);
-    if (result) {
-      if (result.email) {
-        setEmailError(result.email);
-      }
-      if (result.password) {
-        setPasswordError(result.password);
-      }
-      if (result.username) {
-        setUserNameError(result.username);
-      }
-      if (result.confirmPassword) {
-        setConfirmPasswordError(result.confirmPassword);
-      }
-      if (result.changePassword) {
-        setChangePasswordError(result.changePassword);
-      }
-      if (result.authError) {
-        setError(result.authError);
-      } else if (result.otherError) {
-        setError(result.otherError);
-      }
+    console.log("[DEBUG] Form action result:", result);
 
-      if (
-        !result.email &&
-        !result.password &&
-        !result.username &&
-        !result.confirmPassword &&
-        !result.changePassword &&
-        !result.authError &&
-        !result.otherError
-      ) {
-        if (formType === FormType.SignUp) {
-          setFormType(FormType.Login);
+    if (!result) return;
 
-          console.log("Registro exitoso");
-        }
-      }
+    if (result.email) setEmailError(result.email);
+    if (result.password) setPasswordError(result.password);
+    if (result.username) setUserNameError(result.username);
+    if (result.confirmPassword) setConfirmPasswordError(result.confirmPassword);
+    if (result.changePassword) setChangePasswordError(result.changePassword);
+    if (result.authError) setError(result.authError);
+    if (result.otherError) setError(result.otherError);
+
+    if (
+      !result.email &&
+      !result.password &&
+      !result.username &&
+      !result.confirmPassword &&
+      !result.changePassword &&
+      !result.authError &&
+      !result.otherError
+    ) {
+      if (formType === FormType.SignUp) setFormType(FormType.Login);
     }
   };
 
@@ -164,7 +196,8 @@ export default function AccessForm(props: AccessFormProps) {
     <>
       <form
         action={actionHandler}
-        className="flex w-80 max-w-xs flex-col items-center justify-center gap-3">
+        className="flex w-80 max-w-xs flex-col items-center justify-center gap-3"
+      >
         <div className="flex w-full flex-col gap-2">
           {props.type === FormType.Login && (
             <>
@@ -189,11 +222,13 @@ export default function AccessForm(props: AccessFormProps) {
                 textAlign="center"
                 textColor="blue"
                 cursor="pointer"
-                onClick={onOpen}>
+                onClick={onOpen}
+              >
                 ¿Has olvidado tu contraseña?
               </Text>
             </>
           )}
+
           {props.type === FormType.SignUp && (
             <>
               <FormInput
@@ -235,7 +270,7 @@ export default function AccessForm(props: AccessFormProps) {
         {error && <p className="label-text-alt text-red-500">{error}</p>}
       </form>
 
-      {/* Modal para restablecer contraseña */}
+      {/* Modal de restablecer contraseña */}
       <Modal isOpen={isOpen} onClose={onClose}>
         <ModalOverlay />
         <ModalContent>
@@ -255,14 +290,15 @@ export default function AccessForm(props: AccessFormProps) {
             <Button
               backgroundColor="#F1D803"
               textColor="black"
-              onClick={handleResetPassword}>
+              onClick={handleResetPassword}
+            >
               Enviar enlace de restablecimiento
             </Button>
           </ModalFooter>
         </ModalContent>
       </Modal>
 
-      {/* Modal para cambiar la contraseña */}
+      {/* Modal de cambio de contraseña */}
       <Modal isOpen={isPasswordModalOpen} onClose={onPasswordModalClose}>
         <ModalOverlay />
         <ModalContent>
@@ -296,3 +332,5 @@ export default function AccessForm(props: AccessFormProps) {
     </>
   );
 }
+
+
