@@ -49,7 +49,6 @@ export default function AccessForm(props: AccessFormProps) {
   const [confirmNewPassword, setConfirmNewPassword] = useState<string>("");
   const [tokenHash, setTokenHash] = useState<string | null>(null);
 
-
   const { isOpen, onOpen, onClose } = useDisclosure(); // Modal de correo
   const { isOpen: isPasswordModalOpen, onOpen: onPasswordModalOpen, onClose: onPasswordModalClose } = useDisclosure(); // Modal de cambio de contraseña
 
@@ -62,59 +61,38 @@ export default function AccessForm(props: AccessFormProps) {
     setChangePasswordError(undefined);
   };
 
-  // === DEBUG: Detecta token en URL ===
+  // === Detecta token en URL ===
   useEffect(() => {
-  const params = new URLSearchParams(window.location.search);
-  const token_hash = params.get("token_hash");
-  const next = params.get("next");
+    const params = new URLSearchParams(window.location.search);
+    const token_hash = params.get("token_hash");
 
-  console.log("[DEBUG] URL params:", { token_hash, next });
-  toast({
-    title: "DEBUG URL params",
-    description: `token_hash: ${token_hash}, next: ${next}`,
-    status: "info",
-    duration: 5000,
-    isClosable: true,
-  });
+    if (token_hash) {
+      setTokenHash(token_hash);
+      onPasswordModalOpen();
+      toast({
+        title: "Token de recuperación detectado",
+        description: "Abriendo modal de cambio de contraseña",
+        status: "info",
+        duration: 5000,
+        isClosable: true,
+      });
 
-  if (token_hash) {
-    setTokenHash(token_hash)
-    onPasswordModalOpen();
-    toast({
-      title: "DEBUG: recovery token detected",
-      description: "Abriendo modal de cambio de contraseña",
-      status: "info",
-      duration: 5000,
-      isClosable: true,
-    });
-
-    // Guardar el token para cuando el usuario cambie la contraseña
-    setResetEmail(token_hash); // <-- o un estado nuevo tokenHash
-
-    const url = new URL(window.location.href);
-    url.searchParams.delete("token_hash");
-    url.searchParams.delete("next");
-    window.history.replaceState({}, "", url.toString());
-  }
-}, []);
-
+      const url = new URL(window.location.href);
+      url.searchParams.delete("token_hash");
+      url.searchParams.delete("next");
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, []);
 
   const handleResetPassword = async () => {
-    console.log("[DEBUG] Sending reset password email for:", resetEmail);
-    toast({
-      title: "DEBUG",
-      description: `Enviando correo a: ${resetEmail}`,
-      status: "info",
-      duration: 3000,
-      isClosable: true,
-    });
+    if (!resetEmail) return;
+    console.log("[DEBUG] Enviando correo de recuperación a:", resetEmail);
 
     const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-      redirectTo: `${window.location.origin}/auth/confirm?next=/access`,
+      redirectTo: `${window.location.origin}/auth/confirm`,
     });
 
     if (error) {
-      console.error("[DEBUG] Reset password error:", error);
       toast({
         title: "Error al enviar correo",
         description: error.message,
@@ -134,34 +112,47 @@ export default function AccessForm(props: AccessFormProps) {
     }
   };
 
-const handleChangePassword = async () => {
-  if (newPassword !== confirmNewPassword) {
-    toast({ title: "Error", description: "Las contraseñas no coinciden", status: "error" });
-    return;
-  }
+  const handleChangePassword = async () => {
+    if (newPassword !== confirmNewPassword) {
+      toast({ title: "Error", description: "Las contraseñas no coinciden", status: "error" });
+      return;
+    }
 
-  if (!tokenHash) return;
+    if (!tokenHash) {
+      toast({ title: "Error", description: "Token de recuperación no encontrado", status: "error" });
+      return;
+    }
 
-  console.log("tokenHash:", tokenHash, "newPassword:", newPassword);
+    console.log("[DEBUG] Cambiando contraseña con token:", tokenHash);
 
-  const res = await fetch("/api/auth/reset-password", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ token_hash: tokenHash, newPassword }),
-  });
+    try {
+      const res = await fetch("/api/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token_hash: tokenHash, newPassword }),
+      });
 
-  const data = await res.json();
+      const data = await res.json();
 
-  if (!res.ok) {
-    toast({ title: "Error al cambiar contraseña", description: data.error, status: "error" });
-  } else {
-    toast({ title: "Contraseña actualizada", description: data.message, status: "success" });
-    onPasswordModalClose();
-  }
-};
+      if (!res.ok) {
+        toast({ title: "Error al cambiar contraseña", description: data.error, status: "error" });
+      } else {
+        toast({ title: "Contraseña actualizada", description: data.message, status: "success" });
+        setTokenHash(null);
+        setNewPassword("");
+        setConfirmNewPassword("");
+        onPasswordModalClose();
+      }
+    } catch (err: any) {
+      console.error("[ERROR] handleChangePassword:", err);
+      toast({
+        title: "Error desconocido",
+        description: err.message || "Algo salió mal",
+        status: "error",
+      });
+    }
+  };
 
- 
-//veamos
   const actionHandler = async (data: FormData) => {
     resetErrors();
     const result = await props.action(data);
@@ -330,5 +321,6 @@ const handleChangePassword = async () => {
     </>
   );
 }
+
 
 

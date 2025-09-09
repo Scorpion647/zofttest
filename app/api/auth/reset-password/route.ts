@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-
+//holaaa
     // Crear cliente Supabase con la anon key (cliente normal)
     const supabase = createClient();
 
