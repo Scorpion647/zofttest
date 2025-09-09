@@ -47,6 +47,8 @@ export default function AccessForm(props: AccessFormProps) {
   const [resetEmail, setResetEmail] = useState<string>("");
   const [newPassword, setNewPassword] = useState<string>("");
   const [confirmNewPassword, setConfirmNewPassword] = useState<string>("");
+  const [tokenHash, setTokenHash] = useState<string | null>(null);
+
 
   const { isOpen, onOpen, onClose } = useDisclosure(); // Modal de correo
   const { isOpen: isPasswordModalOpen, onOpen: onPasswordModalOpen, onClose: onPasswordModalClose } = useDisclosure(); // Modal de cambio de contraseña
@@ -62,35 +64,39 @@ export default function AccessForm(props: AccessFormProps) {
 
   // === DEBUG: Detecta token en URL ===
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get("token");
-    const type = params.get("type");
+  const params = new URLSearchParams(window.location.search);
+  const token_hash = params.get("token_hash");
+  const next = params.get("next");
 
-    console.log("[DEBUG] URL params:", { token, type });
+  console.log("[DEBUG] URL params:", { token_hash, next });
+  toast({
+    title: "DEBUG URL params",
+    description: `token_hash: ${token_hash}, next: ${next}`,
+    status: "info",
+    duration: 5000,
+    isClosable: true,
+  });
+
+  if (token_hash) {
+    onPasswordModalOpen();
     toast({
-      title: "DEBUG URL params",
-      description: `token: ${token}, type: ${type}`,
+      title: "DEBUG: recovery token detected",
+      description: "Abriendo modal de cambio de contraseña",
       status: "info",
       duration: 5000,
       isClosable: true,
     });
 
-    if (token && type === "recovery") {
-      onPasswordModalOpen();
-      toast({
-        title: "DEBUG: recovery token detected",
-        description: "Abriendo modal de cambio de contraseña",
-        status: "info",
-        duration: 5000,
-        isClosable: true,
-      });
+    // Guardar el token para cuando el usuario cambie la contraseña
+    setResetEmail(token_hash); // <-- o un estado nuevo tokenHash
 
-      const url = new URL(window.location.href);
-      url.searchParams.delete("token");
-      url.searchParams.delete("type");
-      window.history.replaceState({}, "", url.toString());
-    }
-  }, []);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("token_hash");
+    url.searchParams.delete("next");
+    window.history.replaceState({}, "", url.toString());
+  }
+}, []);
+
 
   const handleResetPassword = async () => {
     console.log("[DEBUG] Sending reset password email for:", resetEmail);
@@ -128,7 +134,7 @@ export default function AccessForm(props: AccessFormProps) {
   };
 
   const handleChangePassword = async () => {
-    console.log("[DEBUG] Cambio de contraseña:", { newPassword, confirmNewPassword });
+    if (!tokenHash) return;
 
     if (newPassword !== confirmNewPassword) {
       toast({
