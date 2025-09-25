@@ -39,8 +39,12 @@ export default function AccessForm(props: AccessFormProps) {
 
   const [emailError, setEmailError] = useState<string | undefined>();
   const [passwordError, setPasswordError] = useState<string | undefined>();
-  const [confirmPasswordError, setConfirmPasswordError] = useState<string | undefined>();
-  const [ChangePasswordError, setChangePasswordError] = useState<string | undefined>();
+  const [confirmPasswordError, setConfirmPasswordError] = useState<
+    string | undefined
+  >();
+  const [ChangePasswordError, setChangePasswordError] = useState<
+    string | undefined
+  >();
   const [userNameError, setUserNameError] = useState<string | undefined>();
   const [error, setError] = useState<string | undefined>();
 
@@ -50,7 +54,11 @@ export default function AccessForm(props: AccessFormProps) {
   const [tokenHash, setTokenHash] = useState<string | null>(null);
 
   const { isOpen, onOpen, onClose } = useDisclosure(); // Modal de correo
-  const { isOpen: isPasswordModalOpen, onOpen: onPasswordModalOpen, onClose: onPasswordModalClose } = useDisclosure(); // Modal de cambio de contraseña
+  const {
+    isOpen: isPasswordModalOpen,
+    onOpen: onPasswordModalOpen,
+    onClose: onPasswordModalClose,
+  } = useDisclosure(); // Modal de cambio de contraseña
 
   const resetErrors = () => {
     setEmailError(undefined);
@@ -82,14 +90,14 @@ export default function AccessForm(props: AccessFormProps) {
       url.searchParams.delete("next");
       window.history.replaceState({}, "", url.toString());
     }
-  }, []);
+  }, [onPasswordModalOpen, toast]);
 
   const handleResetPassword = async () => {
     if (!resetEmail) return;
     console.log("[DEBUG] Enviando correo de recuperación a:", resetEmail);
 
     const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-      redirectTo: `${window.location.origin}/auth/confirm`,
+      redirectTo: `${window.location.origin}/access`,
     });
 
     if (error) {
@@ -103,7 +111,8 @@ export default function AccessForm(props: AccessFormProps) {
     } else {
       toast({
         title: "Correo enviado",
-        description: "Revisa tu bandeja de entrada para restablecer tu contraseña",
+        description:
+          "Revisa tu bandeja de entrada para restablecer tu contraseña",
         status: "success",
         duration: 5000,
         isClosable: true,
@@ -114,12 +123,20 @@ export default function AccessForm(props: AccessFormProps) {
 
   const handleChangePassword = async () => {
     if (newPassword !== confirmNewPassword) {
-      toast({ title: "Error", description: "Las contraseñas no coinciden", status: "error" });
+      toast({
+        title: "Error",
+        description: "Las contraseñas no coinciden",
+        status: "error",
+      });
       return;
     }
 
     if (!tokenHash) {
-      toast({ title: "Error", description: "Token de recuperación no encontrado", status: "error" });
+      toast({
+        title: "Error",
+        description: "Token de recuperación no encontrado",
+        status: "error",
+      });
       return;
     }
 
@@ -135,9 +152,17 @@ export default function AccessForm(props: AccessFormProps) {
       const data = await res.json();
 
       if (!res.ok) {
-        toast({ title: "Error al cambiar contraseña", description: data.error, status: "error" });
+        toast({
+          title: "Error al cambiar contraseña",
+          description: data.error,
+          status: "error",
+        });
       } else {
-        toast({ title: "Contraseña actualizada", description: data.message, status: "success" });
+        toast({
+          title: "Contraseña actualizada",
+          description: data.message,
+          status: "success",
+        });
         setTokenHash(null);
         setNewPassword("");
         setConfirmNewPassword("");
@@ -185,8 +210,7 @@ export default function AccessForm(props: AccessFormProps) {
     <>
       <form
         action={actionHandler}
-        className="flex w-80 max-w-xs flex-col items-center justify-center gap-3"
-      >
+        className="flex w-80 max-w-xs flex-col items-center justify-center gap-3">
         <div className="flex w-full flex-col gap-2">
           {props.type === FormType.Login && (
             <>
@@ -211,8 +235,7 @@ export default function AccessForm(props: AccessFormProps) {
                 textAlign="center"
                 textColor="blue"
                 cursor="pointer"
-                onClick={onOpen}
-              >
+                onClick={onOpen}>
                 ¿Has olvidado tu contraseña?
               </Text>
             </>
@@ -279,8 +302,7 @@ export default function AccessForm(props: AccessFormProps) {
             <Button
               backgroundColor="#F1D803"
               textColor="black"
-              onClick={handleResetPassword}
-            >
+              onClick={handleResetPassword}>
               Enviar enlace de restablecimiento
             </Button>
           </ModalFooter>
@@ -321,6 +343,3 @@ export default function AccessForm(props: AccessFormProps) {
     </>
   );
 }
-
-
-
