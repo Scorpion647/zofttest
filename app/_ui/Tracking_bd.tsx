@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
-import { HotTable } from "@handsontable/react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import "handsontable/dist/handsontable.full.css";
 import {
   VStack,
@@ -15,7 +14,6 @@ import {
   useToast,
   Checkbox,
   Modal,
-  ModalOverlay,
   ModalContent,
   ModalHeader,
   ModalCloseButton,
@@ -23,17 +21,8 @@ import {
   ModalFooter,
   useDisclosure,
 } from "@chakra-ui/react";
-import {
-  getMaterial,
-  getRecords,
-  getRecordsInfo,
-  getSupplier,
-} from "@/app/_lib/database/service";
 import { ArrowBackIcon, ArrowForwardIcon, SearchIcon } from "@chakra-ui/icons";
-import {
-  selectInvoice_data,
-  selectInvoiceBySupplier,
-} from "../_lib/database/invoice_data";
+import { selectInvoice_data } from "../_lib/database/invoice_data";
 import {
   selectSupplierData,
   selectSupplierDataByInvoiceID,
@@ -45,6 +34,7 @@ import {
 } from "../_lib/database/suppliers";
 import { selectSingleMaterial } from "../_lib/database/materials";
 import ExcelJS from "exceljs";
+import { Tables } from "@lib/database.types";
 
 function formatMoney(amount: number) {
   return amount.toLocaleString("en-US", {
@@ -72,12 +62,294 @@ export const Tracking_bd = () => {
   const [data, Setdata] = useState<InvoiceData[]>([]);
   const [InputValue, setInputValue] = useState("");
   const [savedata, setsavedata] = useState<MiObjeto | undefined>();
-  const hotTableRef = useRef(null);
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [error, setError] = useState("");
   const [isLoading1, setIsLoading1] = useState(false);
+  const supplierCacheRef = useRef<Map<number, Tables<"suppliers">>>(new Map());
+  const billCacheRef = useRef<Map<string, Tables<"base_bills"> | null>>(
+    new Map(),
+  );
+  const materialCacheRef = useRef<Map<string, Tables<"materials"> | null>>(
+    new Map(),
+  );
+  const supplierListRef = useRef<Tables<"suppliers">[] | null>(null);
 
   const toast = useToast();
+
+  const getSupplierFromCache = async (supplierId: number) => {
+    const cache = supplierCacheRef.current;
+    if (cache.has(supplierId)) {
+      return cache.get(supplierId)!;
+    }
+
+    const supplier = await selectSingleSupplier(supplierId);
+    cache.set(supplierId, supplier);
+    return supplier;
+  };
+
+  const getBillFromCache = async (baseBillId: string | null) => {
+    if (!baseBillId) {
+      return null;
+    }
+
+    const cache = billCacheRef.current;
+    if (cache.has(baseBillId)) {
+      return cache.get(baseBillId) ?? null;
+    }
+
+    try {
+      const billResponse = await selectSingleBill(baseBillId);
+      const bill = billResponse?.[0] ?? null;
+      cache.set(baseBillId, bill);
+      return bill;
+    } catch (error) {
+      console.error("Error al obtener la factura base:", error);
+      cache.set(baseBillId, null);
+      return null;
+    }
+  };
+
+  const getMaterialFromCache = async (
+    materialCode: string | null | undefined,
+  ) => {
+    if (!materialCode) {
+      return null;
+    }
+
+    const cache = materialCacheRef.current;
+    if (cache.has(materialCode)) {
+      return cache.get(materialCode) ?? null;
+    }
+
+    try {
+      const material = await selectSingleMaterial(materialCode);
+      cache.set(materialCode, material);
+      return material;
+    } catch (error) {
+      console.error("Error al obtener el material:", error);
+      cache.set(materialCode, null);
+      return null;
+    }
+  };
+
+  const loadSuppliersList = useCallback(async () => {
+    if (!supplierListRef.current) {
+      supplierListRef.current = await selectSuppliers({
+        page: 1,
+        limit: 4000,
+        equals: {},
+      });
+    }
+
+    return supplierListRef.current;
+  }, []);
+
+  const findClosestSupplier = useCallback(
+    async (targetSupplierName: string) => {
+      const normalizedName = targetSupplierName.trim().toLowerCase();
+      if (!normalizedName) {
+        return null;
+      }
+
+      const suppliers = await loadSuppliersList();
+      return (
+        suppliers?.find((supplier) =>
+          supplier.name?.toLowerCase().includes(normalizedName),
+        ) ?? null
+      );
+    },
+    [loadSuppliersList],
+  );
+
+  const buildInvoiceFilter = useCallback(async (): Promise<MiObjeto> => {
+    const filter: MiObjeto = {
+      page: 1,
+      limit: 1000,
+      equals: { state: "approved" },
+      orderBy: { column: "updated_at", options: { ascending: true } },
+    };
+
+    if (InputValue.trim() !== "") {
+      try {
+        const supplier = await findClosestSupplier(InputValue);
+        if (supplier) {
+          filter.equals.supplier_id = supplier.supplier_id;
+        }
+      } catch (error) {
+        console.error("Error al procesar el proveedor:", error);
+      }
+    }
+
+    return filter;
+  }, [InputValue, findClosestSupplier]);
+
+  const fetchAllInvoices = async (filter: MiObjeto) => {
+    const invoices: Tables<"invoice_data">[] = [];
+    let currentPage = filter.page;
+
+    while (true) {
+      const chunk = await selectInvoice_data({
+        ...filter,
+        page: currentPage,
+      });
+
+      if (!chunk || chunk.length === 0) {
+        break;
+      }
+
+      invoices.push(...chunk);
+
+      if (!filter.limit || chunk.length < filter.limit) {
+        break;
+      }
+
+      currentPage += 1;
+    }
+
+    return invoices;
+  };
+
+  const buildTrackingRows = async (
+    invoiceList: Tables<"invoice_data">[],
+  ): Promise<Tracking[]> => {
+    const rows: Tracking[] = [];
+
+    for (const invoice of invoiceList) {
+      let supplierData;
+      try {
+        supplierData = await selectSupplierDataByInvoiceID(
+          invoice.invoice_id,
+          1,
+          250,
+        );
+      } catch (error) {
+        console.error(
+          "Error al obtener los datos del proveedor para la factura:",
+          invoice.invoice_id,
+          error,
+        );
+        continue;
+      }
+
+      if (!supplierData.length) {
+        continue;
+      }
+
+      const firstEntryDate = supplierData[0]?.modified_at;
+      if (!firstEntryDate) {
+        continue;
+      }
+
+      if (
+        Selectyear !== "all" &&
+        firstEntryDate.substring(0, 4) !== Selectyear
+      ) {
+        continue;
+      }
+
+      if (
+        Selectmonth !== "all" &&
+        firstEntryDate.substring(5, 7) !== Selectmonth
+      ) {
+        continue;
+      }
+
+      const supplier = await getSupplierFromCache(invoice.supplier_id).catch(
+        (error) => {
+          console.error("Error al obtener el proveedor:", error);
+          return null;
+        },
+      );
+
+      if (!supplier) {
+        continue;
+      }
+
+      const itemRows = await Promise.all(
+        supplierData.map(async (sup) => {
+          const requiresTrm = sup.billed_currency !== "USD";
+
+          if (requiresTrm && !sup.trm) {
+            return null;
+          }
+
+          const bill = await getBillFromCache(sup.base_bill_id);
+          if (!bill) {
+            return null;
+          }
+
+          const material = await getMaterialFromCache(bill.material_code);
+
+          const measurement =
+            material?.measurement_unit ?? bill.measurement_unit ?? "VACIO";
+
+          const typeMap: Record<string, string> = {
+            national: "NACIONAL",
+            nationalized: "NACIONALALIZADO",
+            other: "OTRO",
+            foreign: "EXTRANJERO",
+          };
+
+          const tipo = material?.type ? (typeMap[material.type] ?? "") : "";
+
+          const conversion =
+            measurement === "KG" || measurement === "KGM" ?
+              parseFloat((sup.gross_weight / sup.billed_quantity).toFixed(8))
+            : ["U", "L"].includes(measurement) ? 1
+            : 0;
+
+          const billedUnitPrice = sup.billed_unit_price / 100;
+          const trmValue = requiresTrm ? (sup.trm ?? 1) : 1;
+          const fobUnit = parseFloat((billedUnitPrice / trmValue).toFixed(8));
+          const fobTotal = parseFloat(
+            ((billedUnitPrice * sup.billed_quantity) / trmValue).toFixed(2),
+          );
+
+          const subheading =
+            material?.subheading ? Number.parseInt(material.subheading, 10) : 0;
+
+          const purchaseOrder = Number.parseInt(bill.purchase_order, 10);
+          const oc = Number.isNaN(purchaseOrder) ? 0 : purchaseOrder;
+
+          return {
+            OC: oc,
+            ITEMS: bill.item ?? 0,
+            CODIGO: bill.material_code ?? "",
+            DESCRIPCION: bill.description ?? "",
+            CANT: sup.billed_quantity,
+            UND: bill.measurement_unit ?? "",
+            NOTA: undefined,
+            PROVEEDOR: supplier.name ?? "",
+            FOB_UNIT: fobUnit,
+            FACTURA: sup.bill_number ?? "",
+            FMM: invoice.fmm ?? undefined,
+            PA: subheading,
+            UC: measurement,
+            TRM: requiresTrm ? (sup.trm ?? 0) : 1,
+            FOB: fobTotal,
+            COP_UNIT: billedUnitPrice,
+            COP_TOTAL: billedUnitPrice * sup.billed_quantity,
+            TIPO: tipo,
+            EMBALAJE: "PK",
+            PB: sup.gross_weight ?? 0,
+            PN: sup.gross_weight ?? 0,
+            Bultos: sup.packages ?? 0,
+            CODBANDERA: 169,
+            CODPAIS_ORIGEN: 169,
+            CODPAIS_COMPRA: 169,
+            PAIS_DESTINO: 953,
+            PAIS_PROCEDENCIA: 169,
+            Transporte: 3,
+            Conversion: conversion,
+          } as Tracking;
+        }),
+      );
+
+      rows.push(...itemRows.filter((row): row is Tracking => row !== null));
+    }
+
+    return rows;
+  };
 
   const columns = [
     { data: 0, readOnly: true, title: "OC" },
@@ -153,11 +425,11 @@ export const Tracking_bd = () => {
     PA: number;
     UC: string;
     TRM: number;
-    FOB: string; // Formato con símbolo de moneda
-    COP_UNIT: string; // Formato con símbolo de moneda
-    COP_TOTAL: string; // Formato con símbolo de moneda
+    FOB: number;
+    COP_UNIT: number;
+    COP_TOTAL: number;
     TIPO: string;
-    Embalaje: string;
+    EMBALAJE: string;
     PB: number;
     PN: number;
     Bultos: number;
@@ -174,11 +446,6 @@ export const Tracking_bd = () => {
     let consecutivo = String(e).slice(0, 8);
     return consecutivo;
   };
-  //Selectmonth, Selectyear, InputValue
-  useEffect(() => {
-    FetchData();
-  }, []);
-
   /*
 
 worksheet.columns = [
@@ -247,383 +514,211 @@ worksheet.columns = [
                                     });
     */
 
-  const suppppp = async () => {
-    setIsLoading1(true);
-    setError("");
-    onOpen();
-  };
-
   const Supp_Export = async () => {
     setIsLoading1(true);
     setError("");
     onOpen();
 
-    let data: MiObjeto = {
-      page: 1,
-      limit: 1000,
-      equals: { state: "approved" },
-      orderBy: { column: "updated_at", options: { ascending: true } },
-    };
-    if (InputValue !== "") {
-      try {
-        // Espera a que se resuelva la búsqueda del proveedor más cercano
-        const result = await findClosestSupplier(InputValue);
-
-        if (result) {
-          const cleanSupplier = result.trim(); // Limpia espacios del resultado
-          console.log("Proveedor más cercano:", cleanSupplier);
-
-          // Busca en la base de datos con el proveedor más cercano
-          const supid = await selectSuppliers({
-            page: 1,
-            limit: 1,
-            equals: { name: cleanSupplier },
-          });
-
-          if (supid.length > 0) {
-            console.log("Todos los datos del supplier:", supid);
-            console.log("supplier_id:", supid[0]?.supplier_id);
-
-            // Asigna el supplier_id al objeto data
-            data.equals.supplier_id = supid[0]?.supplier_id;
-          } else {
-            console.log("No se encontró el supplier en la base de datos.");
-          }
-        } else {
-          console.log("No se encontró ningún proveedor similar.");
-        }
-      } catch (error) {
-        setError("Error al generar el archivo de seguimiento.");
-        console.error("Error al procesar el proveedor:", error);
-      }
-    }
-
-    console.log("Primera parte");
     try {
-      let invoice = [];
-      while (true) {
-        const chunk = await selectInvoice_data(data);
-        if (!chunk || chunk.length === 0) break;
-        invoice.push(...chunk);
-        console.log(data.page);
-        data.page = data.page + 1;
-      }
-      console.log("Segunda parte");
-      if (invoice.length !== 0) {
-        setsavedata(data);
-        let workbook = new ExcelJS.Workbook();
-        let worksheet = workbook.addWorksheet("Suppliers Data");
+      const filter = await buildInvoiceFilter();
+      const invoices = await fetchAllInvoices(filter);
 
-        // Escribe las cabeceras
-        worksheet.columns = [
-          { header: "OC", key: "OC" },
-          { header: "ITEMS", key: "ITEMS" },
-          { header: "CODIGO", key: "CODIGO" },
-          { header: "DESCRIPCION", key: "DESCRIPCION" },
-          { header: "CANT", key: "CANT" },
-          { header: "UND", key: "UND" },
-          { header: "NOTA", key: "NOTA" },
-          { header: "PROVEEDOR", key: "PROVEEDOR" },
-          { header: "FOB_UNIT", key: "FOB_UNIT" },
-          { header: "FACTURA", key: "FACTURA" },
-          { header: "FMM", key: "FMM" },
-          { header: "PA", key: "PA" },
-          { header: "UC", key: "UC" },
-          { header: "TRM", key: "TRM" },
-          { header: "FOB", key: "FOB" },
-          { header: "COP_UNIT", key: "COP_UNIT" },
-          { header: "COP_TOTAL", key: "COP_TOTAL" },
-          { header: "TIPO", key: "TIPO" },
-          { header: "EMBALAJE", key: "EMBALAJE" },
-          { header: "PB", key: "PB" },
-          { header: "PN", key: "PN" },
-          { header: "BULTOS", key: "BULTOS" },
-          { header: "CODBANDERA", key: "CODBANDERA" },
-          { header: "CODPAIS_ORIGEN", key: "CODPAIS_ORIGEN" },
-          { header: "CODPAIS_COMPRA", key: "CODPAIS_COMPRA" },
-          { header: "PAIS_DESTINO", key: "PAIS_DESTINO" },
-          { header: "PAIS_PROCEDENCIA", key: "PAIS_PROCEDENCIA" },
-          { header: "TRANSPORTE", key: "TRANSPORTE" },
-          { header: "CONVERSION", key: "CONVERSION" },
-        ];
-        console.log("Tercera parte");
-        for (const invo of invoice) {
-          try {
-            const data = await selectSupplierDataByInvoiceID(
-              invo.invoice_id,
-              1,
-              250,
-            );
-            if (Selectyear !== "all") {
-              if (Selectyear !== data[0].modified_at.substring(0, 4)) continue;
-            }
-            if (Selectmonth !== "all") {
-              if (Selectmonth !== data[0].modified_at.substring(5, 7)) continue;
-            }
-
-            try {
-              const supplier = await selectSingleSupplier(invo.supplier_id);
-
-              // Ahora los datos se organizan por ITEMS
-              console.log(data.length);
-              console.log();
-              for (const sup of data) {
-                try {
-                  if (!sup.trm) return;
-
-                  const bill = await selectSingleBill(sup.base_bill_id);
-                  let material = "";
-                  let descripcion = "";
-                  let subpartida = 0;
-                  let measurement = "";
-                  let tipo = "";
-                  let conversion = 0;
-                  const exits_material = await selectSingleMaterial(
-                    bill[0].material_code,
-                  );
-                  subpartida = parseInt(
-                    exits_material.subheading || "1234567891",
-                  );
-                  measurement = exits_material.measurement_unit || "VACIO";
-                  if (exits_material.type) {
-                    if (exits_material.type === "national") {
-                      tipo = "NACIONAL";
-                    } else if (exits_material.type === "nationalized") {
-                      tipo = "NACIONALALIZADO";
-                    } else if (exits_material.type === "other") {
-                      tipo = "OTRO";
-                    }
-                  }
-                  conversion =
-                    measurement === "KG" || measurement === "KGM" ?
-                      parseFloat(
-                        (sup.gross_weight / sup.billed_quantity).toFixed(8),
-                      )
-                    : ["U", "L"].includes(measurement) ? 1
-                    : 0;
-                  descripcion = bill[0].description || "";
-
-                  // Añadir la fila al archivo Excel
-                  worksheet.addRow({
-                    OC: parseInt(bill[0].purchase_order),
-                    ITEMS: bill[0].item, // Ordena por el valor de ITEM
-                    CODIGO: material,
-                    DESCRIPCION: descripcion,
-                    CANT: sup.billed_quantity,
-                    UND: bill[0].measurement_unit,
-                    NOTA: undefined,
-                    PROVEEDOR: supplier.name,
-                    FOB_UNIT: parseFloat(
-                      (
-                        sup.billed_unit_price /
-                        100 /
-                        (sup.billed_currency === "USD" ? 1 : sup.trm)
-                      ).toFixed(8),
-                    ),
-                    FACTURA: sup.bill_number,
-                    FMM: invo.fmm,
-                    PA: subpartida,
-                    UC: measurement,
-                    TRM: sup.trm,
-                    FOB: parseFloat(
-                      (
-                        ((sup.billed_unit_price / 100) * sup.billed_quantity) /
-                        (sup.billed_currency === "USD" ? 1 : sup.trm)
-                      ).toFixed(2),
-                    ),
-                    COP_UNIT: sup.billed_unit_price / 100,
-                    COP_TOTAL:
-                      (sup.billed_unit_price / 100) * sup.billed_quantity,
-                    TIPO: tipo,
-                    EMBALAJE: "PK",
-                    PB: sup.gross_weight,
-                    PN: sup.gross_weight,
-                    BULTOS: sup.packages,
-                    CODBANDERA: 169,
-                    CODPAIS_ORIGEN: 169,
-                    CODPAIS_COMPRA: 169,
-                    PAIS_DESTINO: 953,
-                    PAIS_PROCEDENCIA: 169,
-                    TRANSPORTE: 3,
-                    CONVERSION: conversion,
-                  });
-                } catch (error) {
-                  console.error("Error al procesar el sup:", error);
-                }
-              }
-            } catch (error) {
-              console.error("Error al obtener el registro:", error);
-            }
-          } catch (error) {
-            console.error(
-              "Error fetching data for invoice",
-              invo.invoice_id,
-              error,
-            );
-          }
-        }
-
-        // Exporta el archivo Excel
-        const buffer = await workbook.xlsx.writeBuffer();
-        const blob = new Blob([buffer], {
-          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        });
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = "suppliers_data.xlsx";
-        link.click();
-      } else {
+      if (!invoices.length) {
         setsavedata(undefined);
+        setError(
+          "No se encontraron facturas aprobadas con los filtros seleccionados.",
+        );
+        toast({
+          title: "Sin resultados",
+          description:
+            "No se encontraron facturas aprobadas para los filtros seleccionados.",
+          status: "info",
+          duration: 4000,
+          isClosable: true,
+        });
+        return;
       }
+
+      setsavedata(filter);
+
+      const rows = await buildTrackingRows(invoices);
+
+      if (!rows.length) {
+        setError("No hay datos para exportar con los filtros seleccionados.");
+        toast({
+          title: "Exportación vacía",
+          description:
+            "No se encontraron registros para generar el archivo con los filtros actuales.",
+          status: "info",
+          duration: 4000,
+          isClosable: true,
+        });
+        return;
+      }
+
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Suppliers Data");
+
+      worksheet.columns = [
+        { header: "OC", key: "OC" },
+        { header: "ITEMS", key: "ITEMS" },
+        { header: "CODIGO", key: "CODIGO" },
+        { header: "DESCRIPCION", key: "DESCRIPCION" },
+        { header: "CANT", key: "CANT" },
+        { header: "UND", key: "UND" },
+        { header: "NOTA", key: "NOTA" },
+        { header: "PROVEEDOR", key: "PROVEEDOR" },
+        { header: "FOB_UNIT", key: "FOB_UNIT" },
+        { header: "FACTURA", key: "FACTURA" },
+        { header: "FMM", key: "FMM" },
+        { header: "PA", key: "PA" },
+        { header: "UC", key: "UC" },
+        { header: "TRM", key: "TRM" },
+        { header: "FOB", key: "FOB" },
+        { header: "COP_UNIT", key: "COP_UNIT" },
+        { header: "COP_TOTAL", key: "COP_TOTAL" },
+        { header: "TIPO", key: "TIPO" },
+        { header: "EMBALAJE", key: "EMBALAJE" },
+        { header: "PB", key: "PB" },
+        { header: "PN", key: "PN" },
+        { header: "BULTOS", key: "BULTOS" },
+        { header: "CODBANDERA", key: "CODBANDERA" },
+        { header: "CODPAIS_ORIGEN", key: "CODPAIS_ORIGEN" },
+        { header: "CODPAIS_COMPRA", key: "CODPAIS_COMPRA" },
+        { header: "PAIS_DESTINO", key: "PAIS_DESTINO" },
+        { header: "PAIS_PROCEDENCIA", key: "PAIS_PROCEDENCIA" },
+        { header: "TRANSPORTE", key: "TRANSPORTE" },
+        { header: "CONVERSION", key: "CONVERSION" },
+      ];
+
+      const sortedRows = [...rows].sort((a, b) => {
+        if (a.OC === b.OC) {
+          return a.ITEMS - b.ITEMS;
+        }
+        return a.OC - b.OC;
+      });
+      worksheet.addRows(sortedRows);
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.href = url;
+      link.download = "suppliers_data.xlsx";
+      link.click();
+      URL.revokeObjectURL(url);
     } catch (error) {
       setError("Error al generar el archivo de seguimiento.");
-      console.error("Error al obtener los datos de las facturas:", error);
-      onClose();
+      console.error("Error al generar el archivo de seguimiento:", error);
+      toast({
+        title: "Error al exportar",
+        description: "Ocurrió un problema al generar el archivo.",
+        status: "error",
+        duration: 4000,
+        isClosable: true,
+      });
     } finally {
       setIsLoading1(false);
       onClose();
     }
   };
 
-  const findClosestSupplier = async (targetSupplierName: string) => {
-    const listsup = await selectSuppliers({ page: 1, limit: 4000, equals: {} });
-
-    // Filtra proveedores que incluyan el nombre objetivo
-    const filteredSuppliers = listsup.filter((supplier) =>
-      supplier.name.toLowerCase().includes(targetSupplierName.toLowerCase()),
-    );
-
-    return filteredSuppliers[0].name || null; // Devuelve el primero encontrado o null si no hay coincidencias
-  };
-
-  const FetchData = async () => {
+  const FetchData = useCallback(async () => {
     setIsLoading(true);
-    let data: MiObjeto = {
-      page: 1,
-      limit: 1000,
-      equals: { state: "approved" },
-      orderBy: { column: "updated_at", options: { ascending: true } },
-    };
-    if (InputValue !== "") {
-      try {
-        // Espera a que se resuelva la búsqueda del proveedor más cercano
-        const result = await findClosestSupplier(InputValue);
-
-        if (result) {
-          const cleanSupplier = result.trim(); // Limpia espacios del resultado
-          console.log("Proveedor más cercano:", cleanSupplier);
-
-          // Busca en la base de datos con el proveedor más cercano
-          const supid = await selectSuppliers({
-            page: 1,
-            limit: 1,
-            equals: { name: cleanSupplier },
-          });
-
-          if (supid.length > 0) {
-            console.log("Todos los datos del supplier:", supid);
-            console.log("supplier_id:", supid[0]?.supplier_id);
-
-            // Asigna el supplier_id al objeto data
-            data.equals.supplier_id = supid[0]?.supplier_id;
-          } else {
-            console.log("No se encontró el supplier en la base de datos.");
-          }
-        } else {
-          console.log("No se encontró ningún proveedor similar.");
-        }
-      } catch (error) {
-        console.error("Error al procesar el proveedor:", error);
-      }
-    }
-    if (Selectmonth !== "all") {
-      //alert("cambio de mes")
-      //data.equals.datem = 8;
-    }
-
-    if (Selectyear !== "all") {
-      //alert("cambio de año")
-      //data.equals.dateyear = 2012;
-    }
 
     try {
-      const invoice = await selectInvoice_data(data);
-      if (invoice) {
-        setsavedata(data);
-        const Data: (InvoiceData | null)[] = await Promise.all(
-          invoice.map(async (invo) => {
-            try {
-              const data = await selectSupplierDataByInvoiceID(
-                invo.invoice_id,
-                1,
-                250,
-              );
-              try {
-                const record = await selectSingleBill(data[0].base_bill_id);
+      const filter = await buildInvoiceFilter();
+      const invoices = await selectInvoice_data(filter);
 
-                const supplier = await selectSingleSupplier(invo.supplier_id);
-                let subtotal = 0;
-                let fob = 0;
-                console.log("Tamaño de la factura: ", data.length);
-                data.map(async (sup) => {
-                  try {
-                    subtotal =
-                      (sup.billed_unit_price / 100) * sup.billed_quantity +
-                      subtotal;
-
-                    fob =
-                      parseFloat(
-                        (
-                          ((sup.billed_unit_price / 100) *
-                            sup.billed_quantity) /
-                          (sup.billed_currency === "USD" ? 1 : sup.trm)
-                        ).toFixed(2),
-                      ) + fob;
-                  } catch {}
-                });
-                console.log("Año:", data[0].modified_at.substring(0, 4));
-                if (Selectyear !== "all") {
-                  if (Selectyear !== data[0].modified_at.substring(0, 4))
-                    return null;
-                }
-                if (Selectmonth !== "all") {
-                  if (Selectmonth !== data[0].modified_at.substring(5, 7))
-                    return null;
-                }
-                console.log("Mes:", data[0].modified_at.substring(5, 7));
-                return {
-                  consecutivo: invo.invoice_id,
-                  orden: record[0]?.purchase_order, // Asegúrate de manejar 'undefined'
-                  bill: data[0].bill_number,
-                  subtotal: subtotal,
-                  fob: fob,
-                  fecha: formatDate(data[0].modified_at),
-                  estado: supplier.name,
-                };
-              } catch (error) {
-                console.error("Error al obtener el registro:", error);
-                return null; // Retornar null si falla
-              }
-            } catch (error) {
-              console.error(
-                "Error fetching data for invoice",
-                invo.invoice_id,
-                error,
-              );
-              return null; // Retornar null si falla
-            }
-          }),
-        );
-
-        Setdata(Data.filter((item): item is InvoiceData => item !== null));
-      } else {
+      if (!invoices || invoices.length === 0) {
         setsavedata(undefined);
+        Setdata([]);
+        return;
       }
-    } catch {
+
+      setsavedata(filter);
+
+      const invoiceSummaries: (InvoiceData | null)[] = await Promise.all(
+        invoices.map(async (invoice) => {
+          try {
+            const supplierData = await selectSupplierDataByInvoiceID(
+              invoice.invoice_id,
+              1,
+              250,
+            );
+
+            if (!supplierData.length) {
+              return null;
+            }
+
+            const firstEntry = supplierData[0];
+
+            if (
+              Selectyear !== "all" &&
+              firstEntry.modified_at.substring(0, 4) !== Selectyear
+            ) {
+              return null;
+            }
+
+            if (
+              Selectmonth !== "all" &&
+              firstEntry.modified_at.substring(5, 7) !== Selectmonth
+            ) {
+              return null;
+            }
+
+            const [supplier, bill] = await Promise.all([
+              getSupplierFromCache(invoice.supplier_id).catch(() => null),
+              getBillFromCache(firstEntry.base_bill_id),
+            ]);
+
+            if (!supplier) {
+              return null;
+            }
+
+            let subtotal = 0;
+            let fob = 0;
+
+            for (const sup of supplierData) {
+              const billedUnitPrice = sup.billed_unit_price / 100;
+              subtotal += billedUnitPrice * sup.billed_quantity;
+
+              const trmValue =
+                sup.billed_currency === "USD" ? 1 : (sup.trm ?? 1);
+              fob += (billedUnitPrice * sup.billed_quantity) / trmValue;
+            }
+
+            return {
+              consecutivo: invoice.invoice_id,
+              orden: bill?.purchase_order,
+              bill: firstEntry.bill_number,
+              subtotal,
+              fob: Number.parseFloat(fob.toFixed(2)),
+              fecha: formatDate(firstEntry.modified_at),
+              estado: supplier.name ?? "",
+            } satisfies InvoiceData;
+          } catch (error) {
+            console.error(
+              "Error fetching data for invoice",
+              invoice.invoice_id,
+              error,
+            );
+            return null;
+          }
+        }),
+      );
+
+      Setdata(
+        invoiceSummaries.filter((item): item is InvoiceData => item !== null),
+      );
+    } catch (error) {
+      console.error("Error al obtener los datos de las facturas:", error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [Selectmonth, Selectyear, buildInvoiceFilter]);
 
   /* const ExportButton = async () => {
 
@@ -640,17 +735,12 @@ worksheet.columns = [
 
   useEffect(() => {
     if (Selectyear === "all" && Selectmonth !== "all") {
-    }
-    FetchData();
-  }, [InputValue, Selectmonth]);
-
-  useEffect(() => {
-    if (Selectyear === "all" && Selectmonth !== "all") {
       setSelectmonth("all");
-    } else {
-      FetchData();
+      return;
     }
-  }, [Selectyear]);
+
+    FetchData();
+  }, [FetchData, Selectmonth, Selectyear]);
 
   const HandleInput = () => {
     if (SearchSupplier && SearchSupplier !== "") {
@@ -1025,5 +1115,3 @@ worksheet.columns = [
     </div>
   );
 };
-
-
