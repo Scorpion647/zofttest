@@ -53,6 +53,7 @@ function formatDate(dateString: string | number | Date) {
 }
 
 export const Tracking_bd = () => {
+  const TRACKING_LIST_LIMIT = 40;
   const [isLoading, setIsLoading] = useState(false);
   const [Selectyear, setSelectyear] = useState("all");
   const [Selectmonth, setSelectmonth] = useState("all");
@@ -162,11 +163,6 @@ export const Tracking_bd = () => {
     let consecutivo = String(e).slice(0, 8);
     return consecutivo;
   };
-  //Selectmonth, Selectyear, InputValue
-  useEffect(() => {
-    FetchData();
-  }, []);
-
   /*
 
 worksheet.columns = [
@@ -247,11 +243,11 @@ worksheet.columns = [
     return suppliers[0]?.supplier_id;
   };
 
-  const loadInvoices = async (fetchAllPages: boolean) => {
+  const loadInvoices = async (fetchAllPages: boolean, pageLimit = 1000) => {
     const supplierId = await resolveSupplierId();
     const queryData: MiObjeto = {
       page: 1,
-      limit: 1000,
+      limit: pageLimit,
       equals: { state: "approved" },
       orderBy: { column: "updated_at", options: { ascending: true } },
     };
@@ -322,15 +318,17 @@ worksheet.columns = [
         return;
       }
 
-      const billList = await selectBillsByIds(
-        supplierData
-          .filter((item) =>
-            filteredInvoices.some(
-              (invoice) => invoice.invoice_id === item.invoice_id,
-            ),
-          )
-          .map((item) => item.base_bill_id),
+      const filteredInvoiceIds = new Set(
+        filteredInvoices.map((invoice) => invoice.invoice_id),
       );
+      const filteredSupplierRows = supplierData.filter((item) =>
+        filteredInvoiceIds.has(item.invoice_id),
+      );
+
+      const [billList, supplierList] = await Promise.all([
+        selectBillsByIds(filteredSupplierRows.map((item) => item.base_bill_id)),
+        selectSuppliersByIds(filteredInvoices.map((item) => item.supplier_id)),
+      ]);
       const billMap = new Map(
         billList.map((item) => [item.base_bill_id, item]),
       );
@@ -342,9 +340,6 @@ worksheet.columns = [
         materialList.map((item) => [item.material_code, item]),
       );
 
-      const supplierList = await selectSuppliersByIds(
-        filteredInvoices.map((item) => item.supplier_id),
-      );
       const supplierMap = new Map(
         supplierList.map((item) => [item.supplier_id, item]),
       );
@@ -471,7 +466,10 @@ worksheet.columns = [
   const FetchData = async () => {
     setIsLoading(true);
     try {
-      const { queryData, invoices } = await loadInvoices(false);
+      const { queryData, invoices } = await loadInvoices(
+        false,
+        TRACKING_LIST_LIMIT,
+      );
       if (!invoices || invoices.length === 0) {
         setsavedata(undefined);
         Setdata([]);
@@ -495,20 +493,19 @@ worksheet.columns = [
         ),
       );
 
-      const supplierList = await selectSuppliersByIds(
-        filteredInvoices.map((item) => item.supplier_id),
-      );
-      const supplierMap = new Map(
-        supplierList.map((item) => [item.supplier_id, item]),
-      );
-
       const firstBillIds = filteredInvoices
         .map(
           (invoice) =>
             supplierDataByInvoiceId.get(invoice.invoice_id)?.[0]?.base_bill_id,
         )
         .filter((billId): billId is string => billId !== undefined);
-      const firstBills = await selectBillsByIds(firstBillIds);
+      const [supplierList, firstBills] = await Promise.all([
+        selectSuppliersByIds(filteredInvoices.map((item) => item.supplier_id)),
+        selectBillsByIds(firstBillIds),
+      ]);
+      const supplierMap = new Map(
+        supplierList.map((item) => [item.supplier_id, item]),
+      );
       const firstBillMap = new Map(
         firstBills.map((bill) => [bill.base_bill_id, bill]),
       );
@@ -576,17 +573,11 @@ worksheet.columns = [
 
   useEffect(() => {
     if (Selectyear === "all" && Selectmonth !== "all") {
-    }
-    FetchData();
-  }, [InputValue, Selectmonth]);
-
-  useEffect(() => {
-    if (Selectyear === "all" && Selectmonth !== "all") {
       setSelectmonth("all");
     } else {
       FetchData();
     }
-  }, [Selectyear]);
+  }, [InputValue, Selectyear, Selectmonth]);
 
   const HandleInput = () => {
     if (SearchSupplier && SearchSupplier !== "") {
