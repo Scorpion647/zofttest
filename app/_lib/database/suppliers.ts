@@ -21,6 +21,28 @@ export async function selectSingleSupplier(
   return data;
 }
 
+export async function selectSuppliersByIds(
+  supplierIds: Tables<"suppliers">["supplier_id"][],
+) {
+  const uniqueIds = Array.from(new Set(supplierIds));
+  if (uniqueIds.length === 0) return [];
+
+  const results: Tables<"suppliers">[] = [];
+
+  for (let i = 0; i < uniqueIds.length; i += 500) {
+    const chunk = uniqueIds.slice(i, i + 500);
+    const { data, error } = await supabase
+      .from("suppliers")
+      .select("*")
+      .in("supplier_id", chunk);
+
+    if (error) throw error;
+    if (data) results.push(...data);
+  }
+
+  return results;
+}
+
 export async function selectSuppliers(
   params: MultiSelectQuery<Tables<"suppliers">>,
 ) {
