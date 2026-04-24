@@ -507,14 +507,14 @@ worksheet.columns = [
           (invoice) =>
             supplierDataByInvoiceId.get(invoice.invoice_id)?.[0]?.base_bill_id,
         )
-        .filter((billId): billId is number => billId !== undefined);
+        .filter((billId): billId is string => billId !== undefined);
       const firstBills = await selectBillsByIds(firstBillIds);
       const firstBillMap = new Map(
         firstBills.map((bill) => [bill.base_bill_id, bill]),
       );
 
-      const rows: InvoiceData[] = filteredInvoices
-        .map((invoice) => {
+      const rows = filteredInvoices
+        .map<InvoiceData | null>((invoice) => {
           const details = supplierDataByInvoiceId.get(invoice.invoice_id) ?? [];
           if (details.length === 0) return null;
 
@@ -542,7 +542,7 @@ worksheet.columns = [
           return {
             consecutivo: invoice.invoice_id,
             orden: firstBill?.purchase_order,
-            bill: firstDetail.bill_number,
+            bill: firstDetail.bill_number ?? undefined,
             subtotal,
             fob,
             fecha: formatDate(firstDetail.modified_at),
