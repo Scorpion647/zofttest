@@ -240,6 +240,7 @@ worksheet.columns = [
     const suppliers = await selectSuppliers({
       page: 1,
       limit: 1,
+      equals: {},
       search: InputValue.trim(),
       orderBy: { column: "name", options: { ascending: true } },
     });
