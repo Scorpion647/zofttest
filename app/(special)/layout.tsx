@@ -15,6 +15,14 @@ export default async function SpecialLayout({
   let isLoading = true;
 
   async function handleRole() {
+    const hasSupabaseEnv =
+      !!process.env.NEXT_PUBLIC_SUPABASE_URL &&
+      !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!hasSupabaseEnv) {
+      return "guest";
+    }
+
     const supabase = await createClient();
     const { data } = await supabase.rpc("get_user_role");
 

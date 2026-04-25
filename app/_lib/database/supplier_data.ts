@@ -37,6 +37,28 @@ export async function selectSupplierDataByInvoiceID(
   return data;
 }
 
+export async function selectSupplierDataByInvoiceIDs(
+  invoiceIDs: Tables<"invoice_data">["invoice_id"][],
+) {
+  const uniqueIds = Array.from(new Set(invoiceIDs));
+  if (uniqueIds.length === 0) return [];
+
+  const results: Tables<"supplier_data">[] = [];
+
+  for (let i = 0; i < uniqueIds.length; i += 300) {
+    const chunk = uniqueIds.slice(i, i + 300);
+    const { data, error } = await supabase
+      .from("supplier_data")
+      .select("*")
+      .in("invoice_id", chunk);
+
+    if (error) throw error;
+    if (data) results.push(...data);
+  }
+
+  return results;
+}
+
 export async function selectSupplierData(
   params: Prettify<MultiSelectQuery<Tables<"supplier_data">>>,
 ) {

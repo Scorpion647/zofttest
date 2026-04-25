@@ -69,6 +69,28 @@ export async function selectSingleBill(
   return data;
 }
 
+export async function selectBillsByIds(
+  billIds: Tables<"base_bills">["base_bill_id"][],
+) {
+  const uniqueIds = Array.from(new Set(billIds));
+  if (uniqueIds.length === 0) return [];
+
+  const results: Tables<"base_bills">[] = [];
+
+  for (let i = 0; i < uniqueIds.length; i += 500) {
+    const chunk = uniqueIds.slice(i, i + 500);
+    const { data, error } = await supabase
+      .from("base_bills")
+      .select("*")
+      .in("base_bill_id", chunk);
+
+    if (error) throw error;
+    if (data) results.push(...data);
+  }
+
+  return results;
+}
+
 export async function selectByPurchaseOrder(
   po: Tables<"base_bills">["purchase_order"],
   item: Tables<"base_bills">["item"],
