@@ -24,14 +24,11 @@ import {
   useDisclosure,
 } from "@chakra-ui/react";
 import { ArrowBackIcon, ArrowForwardIcon, SearchIcon } from "@chakra-ui/icons";
-import { selectInvoice_data } from "../_lib/database/invoice_data";
-import { selectSupplierDataByInvoiceIDs } from "../_lib/database/supplier_data";
-import { selectBillsByIds } from "../_lib/database/base_bills";
+import { selectSuppliers } from "../_lib/database/suppliers";
 import {
-  selectSuppliersByIds,
-  selectSuppliers,
-} from "../_lib/database/suppliers";
-import { selectMaterialsByCodes } from "../_lib/database/materials";
+  selectTrackingExportRows,
+  selectTrackingSummary,
+} from "../_lib/database/tracking";
 import ExcelJS from "exceljs";
 
 function formatMoney(amount: number) {
@@ -243,46 +240,17 @@ worksheet.columns = [
     return suppliers[0]?.supplier_id;
   };
 
-  const loadInvoices = async (fetchAllPages: boolean, pageLimit = 1000) => {
+  const resolveTrackingFilters = async () => {
     const supplierId = await resolveSupplierId();
-    const queryData: MiObjeto = {
-      page: 1,
-      limit: pageLimit,
-      equals: { state: "approved" },
-      orderBy: { column: "updated_at", options: { ascending: true } },
+    if (InputValue.trim() && !supplierId) {
+      return null;
+    }
+
+    return {
+      supplierId,
+      year: Selectyear !== "all" ? parseInt(Selectyear) : undefined,
+      month: Selectmonth !== "all" ? parseInt(Selectmonth) : undefined,
     };
-
-    if (supplierId) {
-      queryData.equals.supplier_id = supplierId;
-    } else if (InputValue.trim()) {
-      return { queryData, invoices: [] };
-    }
-
-    if (!fetchAllPages) {
-      const invoicePage = await selectInvoice_data(queryData);
-      return { queryData, invoices: invoicePage ?? [] };
-    }
-
-    const invoiceList = [];
-    while (true) {
-      const chunk = await selectInvoice_data(queryData);
-      if (!chunk || chunk.length === 0) break;
-      invoiceList.push(...chunk);
-      queryData.page = queryData.page + 1;
-    }
-
-    return { queryData, invoices: invoiceList };
-  };
-
-  const applyDateFilters = (modifiedAt?: string) => {
-    if (!modifiedAt) return false;
-    if (Selectyear !== "all" && Selectyear !== modifiedAt.substring(0, 4)) {
-      return false;
-    }
-    if (Selectmonth !== "all" && Selectmonth !== modifiedAt.substring(5, 7)) {
-      return false;
-    }
-    return true;
   };
 
   const Supp_Export = async () => {
@@ -291,60 +259,18 @@ worksheet.columns = [
     onOpen();
 
     try {
-      const { queryData, invoices } = await loadInvoices(true);
-      if (invoices.length === 0) {
+      const filters = await resolveTrackingFilters();
+      if (!filters) {
         setsavedata(undefined);
         return;
       }
 
-      const supplierData = await selectSupplierDataByInvoiceIDs(
-        invoices.map((invoice) => invoice.invoice_id),
-      );
-      const supplierDataByInvoiceId = new Map<string, typeof supplierData>();
-      for (const row of supplierData) {
-        const group = supplierDataByInvoiceId.get(row.invoice_id) ?? [];
-        group.push(row);
-        supplierDataByInvoiceId.set(row.invoice_id, group);
-      }
-
-      const filteredInvoices = invoices.filter((invoice) =>
-        applyDateFilters(
-          supplierDataByInvoiceId.get(invoice.invoice_id)?.[0]?.modified_at,
-        ),
-      );
-
-      if (filteredInvoices.length === 0) {
+      const exportRows = await selectTrackingExportRows(filters);
+      if (exportRows.length === 0) {
         setsavedata(undefined);
         return;
       }
-
-      const filteredInvoiceIds = new Set(
-        filteredInvoices.map((invoice) => invoice.invoice_id),
-      );
-      const filteredSupplierRows = supplierData.filter((item) =>
-        filteredInvoiceIds.has(item.invoice_id),
-      );
-
-      const [billList, supplierList] = await Promise.all([
-        selectBillsByIds(filteredSupplierRows.map((item) => item.base_bill_id)),
-        selectSuppliersByIds(filteredInvoices.map((item) => item.supplier_id)),
-      ]);
-      const billMap = new Map(
-        billList.map((item) => [item.base_bill_id, item]),
-      );
-
-      const materialList = await selectMaterialsByCodes(
-        billList.map((item) => item.material_code),
-      );
-      const materialMap = new Map(
-        materialList.map((item) => [item.material_code, item]),
-      );
-
-      const supplierMap = new Map(
-        supplierList.map((item) => [item.supplier_id, item]),
-      );
-
-      setsavedata(queryData);
+      setsavedata(undefined);
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet("Suppliers Data");
       worksheet.columns = [
@@ -379,71 +305,62 @@ worksheet.columns = [
         { header: "CONVERSION", key: "CONVERSION" },
       ];
 
-      for (const invoice of filteredInvoices) {
-        const rows = supplierDataByInvoiceId.get(invoice.invoice_id) ?? [];
-        const supplier = supplierMap.get(invoice.supplier_id);
+      for (const row of exportRows) {
+        if (!row.trm) continue;
+        const measurement = row.material_measurement_unit || "VACIO";
+        const type =
+          row.material_type === "national" ? "NACIONAL"
+          : row.material_type === "nationalized" ? "NACIONALALIZADO"
+          : row.material_type === "other" ? "OTRO"
+          : "";
+        const conversion =
+          measurement === "KG" || measurement === "KGM" ?
+            parseFloat((row.gross_weight / row.billed_quantity).toFixed(8))
+          : ["U", "L"].includes(measurement) ? 1
+          : 0;
 
-        for (const row of rows) {
-          if (!row.trm) continue;
-          const bill = billMap.get(row.base_bill_id);
-          if (!bill) continue;
-          const materialData = materialMap.get(bill.material_code);
-          const measurement = materialData?.measurement_unit || "VACIO";
-          const type =
-            materialData?.type === "national" ? "NACIONAL"
-            : materialData?.type === "nationalized" ? "NACIONALALIZADO"
-            : materialData?.type === "other" ? "OTRO"
-            : "";
-
-          const conversion =
-            measurement === "KG" || measurement === "KGM" ?
-              parseFloat((row.gross_weight / row.billed_quantity).toFixed(8))
-            : ["U", "L"].includes(measurement) ? 1
-            : 0;
-
-          worksheet.addRow({
-            OC: parseInt(bill.purchase_order),
-            ITEMS: bill.item,
-            CODIGO: bill.material_code,
-            DESCRIPCION: bill.description || "",
-            CANT: row.billed_quantity,
-            UND: bill.measurement_unit,
-            NOTA: undefined,
-            PROVEEDOR: supplier?.name || "",
-            FOB_UNIT: parseFloat(
-              (
-                row.billed_unit_price /
-                100 /
-                (row.billed_currency === "USD" ? 1 : row.trm)
-              ).toFixed(8),
-            ),
-            FACTURA: row.bill_number,
-            FMM: invoice.fmm,
-            PA: parseInt(materialData?.subheading || "1234567891"),
-            UC: measurement,
-            TRM: row.trm,
-            FOB: parseFloat(
-              (
-                ((row.billed_unit_price / 100) * row.billed_quantity) /
-                (row.billed_currency === "USD" ? 1 : row.trm)
-              ).toFixed(2),
-            ),
-            COP_UNIT: row.billed_unit_price / 100,
-            COP_TOTAL: (row.billed_unit_price / 100) * row.billed_quantity,
-            TIPO: type,
-            EMBALAJE: "PK",
-            PB: row.gross_weight,
-            PN: row.gross_weight,
-            BULTOS: row.packages,
-            CODBANDERA: 169,
-            CODPAIS_ORIGEN: 169,
-            CODPAIS_COMPRA: 169,
-            PAIS_DESTINO: 953,
-            PAIS_PROCEDENCIA: 169,
-            TRANSPORTE: 3,
-            CONVERSION: conversion,
-          });
-        }
+        worksheet.addRow({
+          OC: parseInt(row.purchase_order || "0"),
+          ITEMS: row.item || 0,
+          CODIGO: row.material_code || "",
+          DESCRIPCION: row.description || "",
+          CANT: row.billed_quantity,
+          UND: row.bill_measurement_unit || "",
+          NOTA: undefined,
+          PROVEEDOR: row.supplier_name,
+          FOB_UNIT: parseFloat(
+            (
+              row.billed_unit_price /
+              100 /
+              (row.billed_currency === "USD" ? 1 : row.trm)
+            ).toFixed(8),
+          ),
+          FACTURA: row.bill_number,
+          FMM: row.fmm,
+          PA: parseInt(row.subheading || "1234567891"),
+          UC: measurement,
+          TRM: row.trm,
+          FOB: parseFloat(
+            (
+              ((row.billed_unit_price / 100) * row.billed_quantity) /
+              (row.billed_currency === "USD" ? 1 : row.trm)
+            ).toFixed(2),
+          ),
+          COP_UNIT: row.billed_unit_price / 100,
+          COP_TOTAL: (row.billed_unit_price / 100) * row.billed_quantity,
+          TIPO: type,
+          EMBALAJE: "PK",
+          PB: row.gross_weight,
+          PN: row.gross_weight,
+          BULTOS: row.packages,
+          CODBANDERA: 169,
+          CODPAIS_ORIGEN: 169,
+          CODPAIS_COMPRA: 169,
+          PAIS_DESTINO: 953,
+          PAIS_PROCEDENCIA: 169,
+          TRANSPORTE: 3,
+          CONVERSION: conversion,
+        });
       }
 
       const buffer = await workbook.xlsx.writeBuffer();
@@ -466,89 +383,40 @@ worksheet.columns = [
   const FetchData = async () => {
     setIsLoading(true);
     try {
-      const { queryData, invoices } = await loadInvoices(
-        false,
-        TRACKING_LIST_LIMIT,
-      );
-      if (!invoices || invoices.length === 0) {
+      const filters = await resolveTrackingFilters();
+      if (!filters) {
         setsavedata(undefined);
         Setdata([]);
         return;
       }
 
-      const supplierData = await selectSupplierDataByInvoiceIDs(
-        invoices.map((invoice) => invoice.invoice_id),
-      );
+      const summaryRows = await selectTrackingSummary({
+        ...filters,
+        limit: TRACKING_LIST_LIMIT,
+        offset: 0,
+      });
 
-      const supplierDataByInvoiceId = new Map<string, typeof supplierData>();
-      for (const row of supplierData) {
-        const group = supplierDataByInvoiceId.get(row.invoice_id) ?? [];
-        group.push(row);
-        supplierDataByInvoiceId.set(row.invoice_id, group);
-      }
+      const rows: InvoiceData[] = summaryRows.map((row) => ({
+        consecutivo: row.invoice_id,
+        orden: row.purchase_order || undefined,
+        bill: row.bill_number || undefined,
+        subtotal: row.subtotal,
+        fob: row.fob,
+        fecha: formatDate(row.modified_at),
+        estado: row.supplier_name,
+      }));
 
-      const filteredInvoices = invoices.filter((invoice) =>
-        applyDateFilters(
-          supplierDataByInvoiceId.get(invoice.invoice_id)?.[0]?.modified_at,
-        ),
-      );
-
-      const firstBillIds = filteredInvoices
-        .map(
-          (invoice) =>
-            supplierDataByInvoiceId.get(invoice.invoice_id)?.[0]?.base_bill_id,
-        )
-        .filter((billId): billId is string => billId !== undefined);
-      const [supplierList, firstBills] = await Promise.all([
-        selectSuppliersByIds(filteredInvoices.map((item) => item.supplier_id)),
-        selectBillsByIds(firstBillIds),
-      ]);
-      const supplierMap = new Map(
-        supplierList.map((item) => [item.supplier_id, item]),
-      );
-      const firstBillMap = new Map(
-        firstBills.map((bill) => [bill.base_bill_id, bill]),
-      );
-
-      const rows = filteredInvoices
-        .map<InvoiceData | null>((invoice) => {
-          const details = supplierDataByInvoiceId.get(invoice.invoice_id) ?? [];
-          if (details.length === 0) return null;
-
-          const subtotal = details.reduce(
-            (acc, row) =>
-              acc + (row.billed_unit_price / 100) * row.billed_quantity,
-            0,
-          );
-          const fob = details.reduce(
-            (acc, row) =>
-              acc +
-              parseFloat(
-                (
-                  ((row.billed_unit_price / 100) * row.billed_quantity) /
-                  (row.billed_currency === "USD" ? 1 : row.trm)
-                ).toFixed(2),
-              ),
-            0,
-          );
-
-          const firstDetail = details[0];
-          const firstBill = firstBillMap.get(firstDetail.base_bill_id);
-          const supplier = supplierMap.get(invoice.supplier_id);
-
-          return {
-            consecutivo: invoice.invoice_id,
-            orden: firstBill?.purchase_order,
-            bill: firstDetail.bill_number ?? undefined,
-            subtotal,
-            fob,
-            fecha: formatDate(firstDetail.modified_at),
-            estado: supplier?.name || "",
-          };
-        })
-        .filter((item): item is InvoiceData => item !== null);
-
-      setsavedata(queryData);
+      setsavedata({
+        page: 1,
+        limit: TRACKING_LIST_LIMIT,
+        equals: {
+          state: "approved",
+          supplier_id: filters.supplierId,
+          dateyear: filters.year,
+          datem: filters.month,
+        },
+        orderBy: { column: "updated_at", options: { ascending: true } },
+      });
       Setdata(rows);
     } catch (error) {
       console.error("Error al cargar el tracking:", error);
@@ -557,19 +425,6 @@ worksheet.columns = [
       setIsLoading(false);
     }
   };
-
-  /* const ExportButton = async () => {
-
-        if(savedata){
-            const invoice = await selectInvoice_data(savedata)
-            
-            if(invoice){
-
-            }
-        }else{
-
-        }
-    }*/
 
   useEffect(() => {
     if (Selectyear === "all" && Selectmonth !== "all") {
