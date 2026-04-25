@@ -17,9 +17,10 @@ import {
   getProfile,
   getSupplier,
 } from "@/app/_lib/database/service";
-import { ArrowBackIcon, ArrowForwardIcon, CloseIcon, EditIcon } from "@chakra-ui/icons";
+import { CloseIcon, EditIcon } from "@chakra-ui/icons";
 import { FaSave } from "react-icons/fa";
 import { updateSupplier } from "../_lib/database/suppliers";
+import PaginationControls from "./components/PaginationControls";
 
 export const Gettempleados = ({ supplier, regresar }) => {
   const [employees, setEmployees] = useState([]);
@@ -27,8 +28,8 @@ export const Gettempleados = ({ supplier, regresar }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [hasNextPage, setHasNextPage] = useState(false);
-  const [nameSupplier, setnameSupplier] = useState("")
-  const [inputname, setinputname] = useState("")
+  const [nameSupplier, setnameSupplier] = useState("");
+  const [inputname, setinputname] = useState("");
   const itemsPerPage = 8;
   const [Edit, setEdit] = useState(false);
   const toast = useToast();
@@ -50,9 +51,9 @@ export const Gettempleados = ({ supplier, regresar }) => {
     setIsLoading(true);
     try {
       const sup = await getSupplier(supplier, "", "");
-      setnameSupplier(sup.name)
-      setinputname(sup.name)
-      if (Edit) setEdit(false)
+      setnameSupplier(sup.name);
+      setinputname(sup.name);
+      if (Edit) setEdit(false);
       const data = await getEmployees(sup.supplier_id, page, itemsPerPage);
       console.log("Esta es la Data de empleados: ", data);
       if (data && data.length > 0) {
@@ -87,7 +88,10 @@ export const Gettempleados = ({ supplier, regresar }) => {
   const handleNextPage = async () => {
     const nextPage = currentPage + 1;
     const sup = await getSupplier(supplier, "", "");
-    if (nameSupplier !== sup.name) { setnameSupplier(sup.name); setinputname(sup.name) }
+    if (nameSupplier !== sup.name) {
+      setnameSupplier(sup.name);
+      setinputname(sup.name);
+    }
     const data = await getEmployees(sup.supplier_id, nextPage, itemsPerPage);
 
     if (data && data.length > 0) {
@@ -104,9 +108,12 @@ export const Gettempleados = ({ supplier, regresar }) => {
   };
 
   const handleSave = async () => {
-    const confirmSave = window.confirm("¿Seguro quieres guardar los cambios? \n El nuevo nombre sera: " + inputname);
+    const confirmSave = window.confirm(
+      "¿Seguro quieres guardar los cambios? \n El nuevo nombre sera: " +
+        inputname,
+    );
     if (confirmSave) {
-      await updateSupplier({ supplier_id: supplier, name: inputname })
+      await updateSupplier({ supplier_id: supplier, name: inputname });
       toast({
         title: "Nombre cambiado con exito",
         description: `El nombre del proveedor ha sido cambiado`,
@@ -114,21 +121,21 @@ export const Gettempleados = ({ supplier, regresar }) => {
         duration: 3000,
         isClosable: true,
       });
-      setnameSupplier(inputname); 
+      setnameSupplier(inputname);
     }
   };
 
-  const copytext = (action,text) => {
-    navigator.clipboard.writeText(text)
+  const copytext = (action, text) => {
+    navigator.clipboard.writeText(text);
     toast({
-      title: (action+" copiado con exito"),
-        description: ("El "+action+` del empleado ha sido copiado en el portapapeles`),
-        status: "success",
-        duration: 3000,
-        isClosable: true,
-    })
-  }
-
+      title: action + " copiado con exito",
+      description:
+        "El " + action + ` del empleado ha sido copiado en el portapapeles`,
+      status: "success",
+      duration: 3000,
+      isClosable: true,
+    });
+  };
 
   return (
     <div>
@@ -153,15 +160,31 @@ export const Gettempleados = ({ supplier, regresar }) => {
             Proveedor:{" "}
           </Text>
           {Edit ?
-            <Input h="90%" w="80" value={inputname} onChange={(e) => setinputname(e.target.value)} />
-            :
-            <Text fontSize="90%">{nameSupplier}</Text>
-          }
-          <Button h="90%" w="5" bgColor="#F1D803" onClick={() => Edit ? handleSave() : setEdit(true)}>
-            {Edit ? <FaSave /> : <EditIcon />}
+            <Input
+              h="90%"
+              w="80"
+              value={inputname}
+              onChange={(e) => setinputname(e.target.value)}
+            />
+          : <Text fontSize="90%">{nameSupplier}</Text>}
+          <Button
+            h="90%"
+            w="5"
+            bgColor="#F1D803"
+            onClick={() => (Edit ? handleSave() : setEdit(true))}>
+            {Edit ?
+              <FaSave />
+            : <EditIcon />}
           </Button>
           {Edit && (
-            <Button h="90%" w="5" bgColor="red" onClick={() => { setEdit(false); setinputname(nameSupplier); }}>
+            <Button
+              h="90%"
+              w="5"
+              bgColor="red"
+              onClick={() => {
+                setEdit(false);
+                setinputname(nameSupplier);
+              }}>
               <CloseIcon color="white" />
             </Button>
           )}
@@ -233,13 +256,24 @@ export const Gettempleados = ({ supplier, regresar }) => {
                       alignItems="center"
                       justify="start"
                       width="30%">
-                      <Text onClick={() => copytext("nombre",emp.name)}
-                        _hover={{ cursor: "pointer", textDecoration: "underline"}}
-                        >{emp.name}</Text>
+                      <Text
+                        onClick={() => copytext("nombre", emp.name)}
+                        _hover={{
+                          cursor: "pointer",
+                          textDecoration: "underline",
+                        }}>
+                        {emp.name}
+                      </Text>
                     </HStack>
-                    <Text width="60%" onClick={() => copytext("email",emp.email)}
-                      _hover={{ cursor: "pointer", textDecoration: "underline"}}
-                      >{emp.email}</Text>
+                    <Text
+                      width="60%"
+                      onClick={() => copytext("email", emp.email)}
+                      _hover={{
+                        cursor: "pointer",
+                        textDecoration: "underline",
+                      }}>
+                      {emp.email}
+                    </Text>
                     <VStack width="10%">
                       <Icon
                         as={IoEllipsisVerticalSharp}
@@ -255,27 +289,14 @@ export const Gettempleados = ({ supplier, regresar }) => {
           )}
         </VStack>
 
-        <HStack width="100%" height="6%" bg="gray.300" justify="center">
-          <Button
-            width="1%"
-            height="60%"
-            bg="#F1D803"
-            onClick={handlePreviousPage}
-            disabled={currentPage === 1}
-            colorScheme="teal">
-            <ArrowBackIcon width={4} height={4} color="black" />
-          </Button>
-          <Text>{currentPage}</Text>
-          <Button
-            width="1%"
-            height="60%"
-            bg="#F1D803"
-            onClick={handleNextPage}
-            disabled={!hasNextPage}
-            colorScheme="teal">
-            <ArrowForwardIcon width={4} height={4} color="black" />
-          </Button>
-        </HStack>
+        <PaginationControls
+          currentPage={currentPage}
+          onPrevious={handlePreviousPage}
+          onNext={handleNextPage}
+          canPrevious={currentPage > 1}
+          canNext={hasNextPage}
+          containerBg="gray.300"
+        />
       </VStack>
     </div>
   );

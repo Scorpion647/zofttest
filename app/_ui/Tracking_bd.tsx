@@ -23,13 +23,14 @@ import {
   ModalFooter,
   useDisclosure,
 } from "@chakra-ui/react";
-import { ArrowBackIcon, ArrowForwardIcon, SearchIcon } from "@chakra-ui/icons";
+import { SearchIcon } from "@chakra-ui/icons";
 import { selectSuppliers } from "../_lib/database/suppliers";
 import {
   selectTrackingExportRows,
   selectTrackingSummary,
 } from "../_lib/database/tracking";
 import ExcelJS from "exceljs";
+import PaginationControls from "./components/PaginationControls";
 
 function formatMoney(amount: number) {
   return amount.toLocaleString("en-US", {
@@ -759,29 +760,12 @@ worksheet.columns = [
                 </VStack>
               ))}
             </VStack>
-            <HStack
-              marginTop="10px"
-              width="100%"
-              height="6%"
-              bg="gray.200"
-              justify="center">
-              <Button
-                isDisabled={true}
-                width="1%"
-                height="60%"
-                bg="#F1D803"
-                colorScheme="teal">
-                <ArrowBackIcon width={4} height={4} color="black" />
-              </Button>
-              <Text>1</Text>
-              <Button
-                isDisabled={true}
-                width="1%"
-                height="60%"
-                bg="#F1D803"
-                colorScheme="teal">
-                <ArrowForwardIcon width={4} height={4} color="black" />
-              </Button>
+            <HStack marginTop="10px">
+              <PaginationControls
+                currentPage={1}
+                canPrevious={false}
+                canNext={false}
+              />
             </HStack>
           </Box>
 

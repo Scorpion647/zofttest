@@ -17,18 +17,13 @@ import {
   useMediaQuery,
   Tooltip,
 } from "@chakra-ui/react";
-import {
-  SearchIcon,
-  CloseIcon,
-  AddIcon,
-  ArrowBackIcon,
-  ArrowForwardIcon,
-} from "@chakra-ui/icons";
+import { SearchIcon, CloseIcon, AddIcon } from "@chakra-ui/icons";
 import { FaUsersGear } from "react-icons/fa6";
 
 import { Gettempleados } from "@/app/_ui/Gettempleados";
 import { selectSuppliers } from "../_lib/database/suppliers";
 import { GrRefresh } from "react-icons/gr";
+import PaginationControls from "./components/PaginationControls";
 
 export const CreatelargeDomain = () => {
   const [suppliers, setSuppliers] = useState([]);
@@ -100,7 +95,7 @@ export const CreatelargeDomain = () => {
       }
     };
 
-    if(hola) fetchSuppliers();
+    if (hola) fetchSuppliers();
   }, [search, currentPage, hola]);
 
   const handleSupplierClick = (supplier) => {
@@ -164,19 +159,19 @@ export const CreatelargeDomain = () => {
               />
               <Tooltip label="Buscar">
                 <Button
-                colorScheme="teal"
-                onClick={() => setSearch(isInput)}
-                backgroundColor="#F1D803">
-                <SearchIcon w={5} h={5} color="black" />
-              </Button>
+                  colorScheme="teal"
+                  onClick={() => setSearch(isInput)}
+                  backgroundColor="#F1D803">
+                  <SearchIcon w={5} h={5} color="black" />
+                </Button>
               </Tooltip>
               <Tooltip label="Refrescar">
                 <Button
-                colorScheme="teal"
-                onClick={() => setSearch("")}
-                backgroundColor="#F1D803">
-                <GrRefresh color="black"/>
-              </Button>
+                  colorScheme="teal"
+                  onClick={() => setSearch("")}
+                  backgroundColor="#F1D803">
+                  <GrRefresh color="black" />
+                </Button>
               </Tooltip>
             </HStack>
           </Flex>
@@ -214,7 +209,8 @@ export const CreatelargeDomain = () => {
             </VStack>
             <VStack
               height={suppliers.length === 0 ? "100%" : ""}
-              width="100%" bgColor="gray.200">
+              width="100%"
+              bgColor="gray.200">
               {suppliers.length > 0 ?
                 suppliers.map((supplier) => (
                   <Box
@@ -251,20 +247,25 @@ export const CreatelargeDomain = () => {
                           {supplier.name}
                         </Text>
                       </HStack>
-                      <HStack h="100%" w="10%" >
+                      <HStack h="100%" w="10%">
                         <HStack w="20%"></HStack>
                         <Tooltip label="Administrar">
-                          <HStack onClick={() => handleSupplierClick(supplier.supplier_id)} h="100%" w="80%"
-                          className=" rounded-r-xl justify-center align-middle items-center cursor-pointer"
-                          bgColor="#F1D803">
-                          <FaUsersGear />
-                        </HStack>
+                          <HStack
+                            onClick={() =>
+                              handleSupplierClick(supplier.supplier_id)
+                            }
+                            h="100%"
+                            w="80%"
+                            className="cursor-pointer items-center justify-center rounded-r-xl align-middle"
+                            bgColor="#F1D803">
+                            <FaUsersGear />
+                          </HStack>
                         </Tooltip>
                       </HStack>
                     </HStack>
                   </Box>
                 ))
-                : <HStack
+              : <HStack
                   align="center"
                   justify="center"
                   h="100%"
@@ -277,31 +278,15 @@ export const CreatelargeDomain = () => {
               }
             </VStack>
           </VStack>
-          <HStack width="100%" height="6%" bg="gray.200" justify="center">
-            <Button
-              width="1%"
-              height="60%"
-              bg="#F1D803"
-              onClick={handlePreviousPage}
-              disabled={currentPage === 1}
-              colorScheme="teal">
-              <ArrowBackIcon width={4} height={4} color="black" />
-            </Button>
-            <Text>{currentPage}</Text>
-            <Button
-              width="1%"
-              height="60%"
-              bg="#F1D803"
-              onClick={handleNextPage}
-              disabled={!hasNextPage}
-              colorScheme="teal">
-              <ArrowForwardIcon width={4} height={4} color="black" />
-            </Button>
-          </HStack>
+          <PaginationControls
+            currentPage={currentPage}
+            onPrevious={handlePreviousPage}
+            onNext={handleNextPage}
+            canPrevious={currentPage > 1}
+            canNext={hasNextPage}
+          />
         </>
       )}
     </>
   );
 };
-
-

@@ -22,14 +22,7 @@ import {
   useDisclosure,
   Select,
 } from "@chakra-ui/react";
-import {
-  SearchIcon,
-  CheckIcon,
-  CloseIcon,
-  AddIcon,
-  ArrowForwardIcon,
-  ArrowBackIcon,
-} from "@chakra-ui/icons";
+import { SearchIcon, CheckIcon, CloseIcon, AddIcon } from "@chakra-ui/icons";
 import {
   getProfile,
   removeUser,
@@ -42,6 +35,7 @@ import {
 } from "../_lib/database/suppliers";
 import { insertSupplierEmployee } from "../_lib/database/supplier_employee";
 import { insertEmployee, updateProfile } from "../_lib/database/service";
+import PaginationControls from "./components/PaginationControls";
 
 export const CreateLargeUser = () => {
   const [Email, setEmail] = useState("");
@@ -359,15 +353,7 @@ export const CreateLargeUser = () => {
           </>
         )}
       </VStack>
-      <HStack width="100%" height="6%" bg="gray.200" justify="center">
-        <Button width="1%" height="60%" bg="#F1D803" colorScheme="teal">
-          <ArrowBackIcon width={4} height={4} color="black" />
-        </Button>
-        <Text>1</Text>
-        <Button width="1%" height="60%" bg="#F1D803" colorScheme="teal">
-          <ArrowForwardIcon width={4} height={4} color="black" />
-        </Button>
-      </HStack>
+      <PaginationControls currentPage={1} canPrevious={false} canNext={false} />
       {isAccept && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 transition-opacity duration-300">
           <div className="relative z-20 w-5/6 max-w-md rounded-3xl border border-gray-300 bg-white p-4 text-center shadow-md">

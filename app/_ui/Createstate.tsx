@@ -16,12 +16,7 @@ import {
   Text,
   Input,
 } from "@chakra-ui/react";
-import {
-  SearchIcon,
-  AddIcon,
-  ArrowBackIcon,
-  ArrowForwardIcon,
-} from "@chakra-ui/icons";
+import { SearchIcon, AddIcon } from "@chakra-ui/icons";
 import Handsontable from "handsontable";
 import { HotTable } from "@handsontable/react";
 import "handsontable/dist/handsontable.full.css";
@@ -35,6 +30,7 @@ import ReturnTable from "@/app/_ui/components/ReturnTable";
 import { Associate_invoice } from "@/app/_ui/Associate_invoice";
 import { getRole } from "../_lib/supabase/client";
 import { IoMdRefresh } from "react-icons/io";
+import PaginationControls from "./components/PaginationControls";
 
 function formatDate(dateString: string | number | Date) {
   const options: Intl.DateTimeFormatOptions = {
@@ -727,27 +723,13 @@ export const CreatelargeAdmin: React.FC<CreatelargeAdminProps> = ({
                 )}
               </Box>
 
-              <HStack width="100%" height="6%" bg="gray.200" justify="center">
-                <Button
-                  width="1%"
-                  height="60%"
-                  bg="#F1D803"
-                  onClick={() => previouspages()}
-                  isDisabled={!previouspage || currentPage === 1}
-                  colorScheme="teal">
-                  <ArrowBackIcon width={4} height={4} color="black" />
-                </Button>
-                <Text>{currentPage}</Text>
-                <Button
-                  width="1%"
-                  height="60%"
-                  bg="#F1D803"
-                  onClick={() => nextpages()}
-                  isDisabled={!nextpage}
-                  colorScheme="teal">
-                  <ArrowForwardIcon width={4} height={4} color="black" />
-                </Button>
-              </HStack>
+              <PaginationControls
+                currentPage={currentPage}
+                onPrevious={() => previouspages()}
+                onNext={() => nextpages()}
+                canPrevious={previouspage && currentPage > 1}
+                canNext={nextpage}
+              />
 
               {Razon && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 transition-opacity duration-300">
